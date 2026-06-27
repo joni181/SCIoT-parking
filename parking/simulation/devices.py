@@ -1,10 +1,14 @@
 """Simulated sensors (publish events) and actuators (record commands).
 
-`SimulatedSensors` is the development stand-in for the Pi's real drivers in
-`experiments/*.py`: instead of reading I2C/SPI it publishes the exact same
-events. `RecordingActuators` is the stand-in for the gate motor / LED: instead
-of moving hardware it records the commands it receives so tests can assert on
-them and the demo can print them.
+`SimulatedSensors` is the development stand-in for the real drivers in
+`parking.sensors` (`OccupancySensor`, `GateMotionSensor`, `NfcReader`,
+`DurationDial`): instead of reading a device it publishes the exact same events.
+It is a manual injector (one method per event) rather than a single `Sensor`, so
+it deliberately does not implement that interface.
+
+`RecordingActuators` is the test double for the drivers in `parking.actuators`
+(`GateMotor`, `BufferLed`, `VehicleMover`): instead of moving hardware it records
+the commands it receives so tests can assert on them and the demo can print them.
 """
 from __future__ import annotations
 

@@ -5,3 +5,7 @@ and drive the devices.
 
 Devices: gate (stepper motor), buffer occupancy indicator (LED), vehicle motion
 (human-simulated in the demo).
+
+**Interface:** [`Actuator`](base.py) (a `Component`). Drivers (skeletons) in
+[`drivers.py`](drivers.py); test double is `RecordingActuators` in
+[`../simulation/`](../simulation/README.md).

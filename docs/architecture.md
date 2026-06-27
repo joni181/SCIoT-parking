@@ -45,6 +45,38 @@ simulated devices in `parking/simulation/`). The broker runs as a separate proce
 See **[message-flow.md](message-flow.md)** for the topic catalog, message formats, the
 broker, and the two end-to-end scenarios. Try `python examples/message_flow_demo.py`.
 
+## Interfaces (two layers)
+
+There are two distinct contracts in the system, and it helps to keep them apart:
+
+1. **Between modules — the wire contract.** Modules never import each other; they
+   only exchange messages. So the *inter-module* interface is the pair
+   **topics + message schemas** in `common/` (above). A sensor depends on
+   `OccupancyEvent`, not on `storage`.
+2. **Inside each module — the code port.** Each module folder declares its own role
+   as a small `typing.Protocol` in a `base.py`, so a concrete implementation can be
+   swapped (real hardware ↔ simulation, in-memory store ↔ DB, one planner ↔ another)
+   without touching anyone else. These are structural `@runtime_checkable` Protocols;
+   `tests/test_interfaces.py` enforces that every implementation satisfies its port.
+
+All bus-attached parts share one tiny lifecycle interface,
+`parking.common.Component` (`start()` / `stop()`), so an entrypoint in `apps/` can
+wire and run a mixed bag of them uniformly.
+
+| Module | Port (`base.py`) | Shipped implementation | Stand-in (simulation) |
+|---|---|---|---|
+| `sensors/` | `Sensor` (a `Component`) | `OccupancySensor`, `GateMotionSensor`, `NfcReader`, `DurationDial` *(skeletons)* | `SimulatedSensors` |
+| `actuators/` | `Actuator` (a `Component`) | `GateMotor`, `BufferLed`, `VehicleMover` *(skeletons)* | `RecordingActuators` |
+| `dispatching/` | `Dispatcher` (a `Component`) | `PlanDispatcher` *(skeleton)* | `ReactiveGateController` |
+| `storage/` | `OccupancyStore` / `CustomerStore` / `StateStore` | `InMemoryStore` | `OccupancyTracker` *(implements `OccupancyStore`)* |
+| `problem_generation/` | `ProblemGenerator` | `PddlProblemGenerator` *(skeleton)* | — |
+| `planning/` | `Planner` | `ForwardSearchPlanner` *(skeleton)* + `domain/domain.pddl` | — |
+| `visualization/` | `View` (a `Component`) | `ConsoleLotView` *(skeleton)* | `OccupancyTracker` doubles as viz |
+
+*Skeletons* carry the real interface and `TODO`s where the hardware/algorithm drops
+in — so teammates can build a module against its port today and the message flow keeps
+running.
+
 ## Dependencies
 
 Split per node under `requirements/` so each machine installs only what it needs

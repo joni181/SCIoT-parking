@@ -3,3 +3,6 @@
 Classical planning with forward search. Holds the PDDL **domain** (`domain/`) and the
 planner that solves the problem produced by `problem_generation`, then publishes the
 resulting plan for the dispatcher to execute.
+
+**Interface:** [`Planner`](base.py) — `solve(problem) -> PlanMessage`. Skeleton
+implementation in [`forward_search.py`](forward_search.py).
