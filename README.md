@@ -82,5 +82,7 @@ full round trip across the network.
 
 ```bash
 python examples/message_flow_demo.py   # both scenarios, one process
-pytest                                 # the test suite (in-memory bus)
+pytest -m "not integration"            # fast tests, no broker (in-memory bus)
 ```
+
+(Bare `pytest` also runs the broker-backed integration tier — see [tests/README.md](tests/README.md).)

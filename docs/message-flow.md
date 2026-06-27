@@ -111,7 +111,7 @@ Quick in-process check (no broker, no hardware):
 
 ```bash
 python examples/message_flow_demo.py
-pytest
+pytest -m "not integration"
 ```
 
 Full startup (broker + both nodes, one or two machines) and where to set the
