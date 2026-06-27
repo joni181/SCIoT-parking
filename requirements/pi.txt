@@ -1,0 +1,5 @@
+# Raspberry Pi node: hardware I/O (sensors, actuators, dispatching).
+-r common.txt
+RPi.GPIO
+spidev
+# RFID / Grove drivers as needed - see experiments/ (mfrc522, grovepi).
