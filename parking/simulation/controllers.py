@@ -1,26 +1,33 @@
 """Illustrative control / consumer logic that ties events to outcomes.
 
 These exist so the end-to-end message flow runs *today* and the two driving
-questions have a concrete answer. They are intentionally simple stand-ins:
+questions have a concrete answer. They are intentionally simple stand-ins that
+already speak the real module interfaces (see `parking/<module>/base.py`):
 
-  * `ReactiveGateController` will eventually live in `dispatching/` (and/or the
-    planner) - see docs/message-flow.md "Open decisions".
-  * `OccupancyTracker` is a stand-in for `storage/` + `visualization/`.
+  * `ReactiveGateController` is a `parking.common.Component`. It will eventually
+    live in `dispatching/` - see docs/message-flow.md "Open decisions".
+  * `OccupancyTracker` implements `parking.storage.OccupancyStore` (the
+    occupancy slice of `StateStore`); it stands in for `storage/` + `viz/`.
 """
 from __future__ import annotations
 
 from typing import Dict, Iterable, List, Optional
 
 from ..common import models as m
+from ..common.component import Component
 from ..common.messaging import MessageBus
+from ..storage.base import OccupancyStore
 
 
-class ReactiveGateController:
+class ReactiveGateController(Component):
     """Open the gate when a *recognised* car waits, close it once it passes.
 
     Answers: "a sensor tells the Pi a car is at the gate -> the gate opens."
     The gate only opens when BOTH conditions hold: motion present at the gate
     AND a known card was scanned at the gate reader.
+
+    Implements `parking.common.Component`; it wires its subscriptions in
+    `__init__`, so `start()`/`stop()` are no-ops.
     """
 
     def __init__(
@@ -37,6 +44,12 @@ class ReactiveGateController:
 
         bus.subscribe_message(m.GateMotionEvent.TOPIC, self._on_motion)
         bus.subscribe_message(m.NfcScanEvent.TOPIC, self._on_nfc)
+
+    def start(self) -> None:  # subscriptions are wired in __init__
+        ...
+
+    def stop(self) -> None:
+        ...
 
     def authorize(self, uid: str) -> None:
         """Register a card UID as a known/registered customer."""
@@ -62,10 +75,12 @@ class ReactiveGateController:
             self._bus.publish_message(m.GateCommand(action=m.GATE_OPEN, source=self._source))
 
 
-class OccupancyTracker:
+class OccupancyTracker(OccupancyStore):
     """Maintain spot occupancy from events - stand-in for storage + viz.
 
     Answers: "a light sensor on the Pi tells the laptop spot P1 is taken."
+    Implements `parking.storage.OccupancyStore`, so the real storage module is a
+    drop-in replacement for it.
     """
 
     def __init__(self, bus: MessageBus) -> None:
@@ -73,10 +88,14 @@ class OccupancyTracker:
         bus.subscribe_message(m.OccupancyEvent.TOPIC, self._on_occupancy)
 
     def _on_occupancy(self, msg: m.OccupancyEvent) -> None:
-        self.occupied[msg.spot_id] = msg.occupied
+        self.set_occupancy(msg.spot_id, msg.occupied)
 
+    # --- OccupancyStore ----------------------------------------------------
     def is_occupied(self, spot_id: str) -> bool:
         return self.occupied.get(spot_id, False)
+
+    def set_occupancy(self, spot_id: str, occupied: bool) -> None:
+        self.occupied[spot_id] = occupied
 
     def free_spots(self, all_spots: Iterable[str]) -> List[str]:
         return [s for s in all_spots if not self.occupied.get(s, False)]
