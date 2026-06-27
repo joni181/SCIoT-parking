@@ -1,9 +1,17 @@
 # config - runtime configuration
 
-Per-node settings consumed at startup (MQTT broker host/port, topic prefixes, parking
-layout, simulation parameters). Keep machine-specific values here, out of the code.
-Suggested: `pi.yaml`, `laptop.yaml` (commit `.example` versions, keep real ones local).
+Machine-specific settings read at startup, kept out of the code.
 
-**`broker.host` is the single switch** for where the broker lives: both nodes read it to
-find the [Mosquitto broker](../deploy/mqtt/README.md), so moving the broker between the
-laptop and the Pi is a one-line config change. Static address for now; mDNS deferred.
+- `config.example.yaml` — committed template. Copy it to `config.yaml` (which is
+  git-ignored, so each machine keeps its own) and edit the values.
+- `config.yaml` — your local, real settings. Loaded automatically by
+  `parking.common.config.load_settings()`.
+
+**`broker_host` is the single switch** for where the broker lives: every node
+reads it to find the [pure-Python broker](../deploy/broker.py), so moving the
+broker is a one-line change. Set it to the LAN IP of the machine running the
+broker (the laptop). Environment variables (`PARKING_BROKER_HOST`,
+`PARKING_BROKER_PORT`) override the file for one-off runs.
+
+Static address for now; mDNS auto-discovery deferred. Per-node files
+(`pi.yaml` / `laptop.yaml`) can be added later if node-specific settings appear.

@@ -7,8 +7,8 @@ drawing and the project proposal PDF for the full description.
 ## Two physical nodes, one communication layer
 
 The system runs as **independent processes** distributed over two machines, glued
-together by a publish/subscribe message bus (MQTT - Mosquitto broker, `paho-mqtt`
-client). Modules never call each other directly; they exchange events and commands
+together by a publish/subscribe message bus (MQTT - pure-Python `amqtt` broker +
+`paho-mqtt` client). Modules never call each other directly; they exchange events and commands
 over named topics. This keeps the design deployment-independent: *which* process runs
 *where* is decided by the launch entrypoints in `apps/`, not by the module code.
 
@@ -31,10 +31,19 @@ over named topics. This keeps the design deployment-independent: *which* process
 
 ## Communication
 
-Topic names live in `parking/common/` as the single source of truth. Sensors publish
-events; the problem generator and visualization subscribe; the planner publishes plans;
-the dispatcher subscribes to plans and publishes actuator commands. Broker config and
-run scripts live in `deploy/`.
+Topic names live in `parking/common/topics.py` as the single source of truth, and the
+message schemas in `parking/common/models/`. Sensors publish events; the problem
+generator and visualization subscribe; the planner publishes plans; the dispatcher
+subscribes to plans and publishes actuator commands. Broker config and run scripts live
+in `deploy/`.
+
+The bus (`parking/common/messaging/`) has two transports: `MqttBus` (real run) and
+`MemoryBus` (in-process, for testing the whole flow with no broker/hardware via the
+simulated devices in `parking/simulation/`). The broker runs as a separate process
+(`deploy/broker.py`, pure-Python `amqtt`).
+
+See **[message-flow.md](message-flow.md)** for the topic catalog, message formats, the
+broker, and the two end-to-end scenarios. Try `python examples/message_flow_demo.py`.
 
 ## Dependencies
 

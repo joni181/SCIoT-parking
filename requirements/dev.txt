@@ -1,0 +1,7 @@
+# Developer tooling (not needed on the deployed nodes).
+# The unit tests run on the in-memory bus, so they need nothing but pytest.
+pytest
+
+# To run the live MQTT demo on one machine (broker + both node apps):
+amqtt            # pure-Python broker (deploy/broker.py)
+paho-mqtt        # the MqttBus client (also in common.txt)
