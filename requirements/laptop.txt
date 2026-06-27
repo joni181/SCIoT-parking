@@ -1,0 +1,5 @@
+# Laptop node: problem generation, AI planner, storage, visualization.
+-r common.txt
+# Visualization (Python) - pick one and pin it, e.g.:
+#   dash + flask   (web dashboard)   OR   pygame   (2D canvas)
+# AI planner dependency as needed (PDDL/forward-search library or your own).

@@ -1,0 +1,1 @@
+"""Persistent system state (Laptop)."""
