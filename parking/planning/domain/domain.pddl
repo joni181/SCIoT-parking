@@ -5,7 +5,7 @@
 ;; and actions. Fill in / adjust as the planning model firms up (TODOs below).
 
 (define (domain parking)
-  (:requirements :strict :typing)
+  (:requirements :strips :typing)
 
   (:types
     car

@@ -6,10 +6,11 @@ independently. See [architecture.md](architecture.md) for the module map.
 
 ## Model
 
-Modules never call each other. They publish/subscribe small **messages** on
-named **topics** over a shared bus. A publisher doesn't know who listens; a
-subscriber doesn't know who sent. That's what keeps modules swappable and lets
-us decide what runs where in `apps/`, not in module code.
+Runtime events and commands cross module/process boundaries as small **messages** on
+named **topics** over a shared bus. A publisher doesn't know who listens; a subscriber
+doesn't know who sent. Pure services in the same process may additionally receive a
+narrow protocol dependency (for example, `ProblemGenerator` reads `StateStore`); those
+dependencies are assembled in `apps/` and never cross the network.
 
 The bus is an interface (`parking.common.messaging.MessageBus`) with two
 transports — same code runs on either:

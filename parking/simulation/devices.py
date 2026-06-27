@@ -66,6 +66,12 @@ class RecordingActuators:
         bus.subscribe_message(m.BufferLedCommand.TOPIC, self.led_commands.append)
         bus.subscribe_message(m.VehicleMoveCommand.TOPIC, self.vehicle_moves.append)
 
+    def start(self) -> None:  # subscriptions are wired in __init__
+        ...
+
+    def stop(self) -> None:
+        ...
+
     @property
     def gate_state(self) -> Optional[str]:
         """Last gate action seen (GATE_OPEN / GATE_CLOSE), or None."""

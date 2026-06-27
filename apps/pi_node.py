@@ -6,9 +6,9 @@ them through the uniform `Component` lifecycle (`start()` / `stop()`).
 
 Sensors are the one piece that needs real hardware. By default this runs the
 hardware-free `SimulatedSensors` and plays a short scripted scenario, so you can
-run it with no hardware and watch the laptop react over the broker. On the real
-Pi, set `PARKING_SENSORS=hardware` to start the Grove/RC522 drivers instead -
-same bus wiring; only the *source* of the events changes.
+run it with no hardware and watch the laptop react over the broker.
+`PARKING_SENSORS=hardware` selects the Grove/RC522 driver skeletons, which remain
+inert until their `TODO` hardware loops are implemented.
 
     python apps/pi_node.py
     PARKING_BROKER_HOST=192.168.0.10 python apps/pi_node.py     # broker on the laptop
@@ -71,7 +71,7 @@ def play_scenario(bus: MqttBus) -> None:
 
 
 def run_hardware_sensors(bus: MqttBus) -> None:
-    """Start the real sensor drivers and wait for hardware events."""
+    """Start the hardware-driver skeletons and wait for events."""
     sensors = [OccupancySensor(bus, spot) for spot in PARKING_SPOTS] + [
         GateMotionSensor(bus),
         NfcReader(bus, reader=m.READER_GATE),
@@ -80,7 +80,7 @@ def run_hardware_sensors(bus: MqttBus) -> None:
     ]
     for sensor in sensors:
         sensor.start()
-    print("[pi] real sensor drivers started; waiting for hardware events. Ctrl-C to stop.")
+    print("[pi] hardware sensor skeletons started; TODO loops currently emit no events. Ctrl-C to stop.")
     try:
         while True:
             time.sleep(1.0)

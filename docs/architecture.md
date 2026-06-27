@@ -8,13 +8,16 @@ drawing and the project proposal PDF for the full description.
 
 The system runs as **independent processes** distributed over two machines, glued
 together by a publish/subscribe message bus (MQTT - pure-Python `amqtt` broker +
-`paho-mqtt` client). Modules never call each other directly; they exchange events and commands
-over named topics. This keeps the design deployment-independent: *which* process runs
-*where* is decided by the launch entrypoints in `apps/`, not by the module code.
+`paho-mqtt` client). Runtime events and commands never cross process boundaries through
+direct calls; they use named topics. Within one process, composition roots may inject a
+narrow protocol such as `StateStore` into a pure service such as `ProblemGenerator`.
+This keeps deployment decisions in the launch entrypoints under `apps/`.
 
-- **Raspberry Pi node** (`apps/pi_node.py`): all hardware I/O - sensors, actuators, dispatching.
-- **Laptop node** (`apps/laptop_node.py`): compute + UI - problem generation, planner, storage, visualization.
-- The **AI planner** is deployment-agnostic and may run on either node.
+- **Raspberry Pi node** (`apps/pi_node.py`): actuator and sensor skeletons plus reactive
+  gate control; simulated sensors are the default until hardware drivers are implemented.
+- **Laptop node** (`apps/laptop_node.py`): storage + console visualization.
+- The **AI planner** is deployment-agnostic and currently runs as the optional standalone
+  `apps/planner.py` service; problem generation is not wired into a node yet.
 
 ## Modules (`parking/`)
 
@@ -32,10 +35,11 @@ over named topics. This keeps the design deployment-independent: *which* process
 ## Communication
 
 Topic names live in `parking/common/topics.py` as the single source of truth, and the
-message schemas in `parking/common/models/`. Sensors publish events; the problem
-generator and visualization subscribe; the planner publishes plans; the dispatcher
-subscribes to plans and publishes actuator commands. Broker config and run scripts live
-in `deploy/`.
+message schemas in `parking/common/models/`. Sensors publish events; storage and
+visualization subscribe; a planner service consumes generated problems and publishes
+plans; the dispatcher consumes plans and publishes actuator commands. Problem
+generation itself is currently a pure `StateStore` consumer and is not yet wired to a
+trigger. Broker config and run scripts live in `deploy/`.
 
 The bus (`parking/common/messaging/`) has two transports: `MqttBus` (real run) and
 `MemoryBus` (in-process, for testing the whole flow with no broker/hardware via the
@@ -49,15 +53,15 @@ broker, and the two end-to-end scenarios. Try `python examples/message_flow_demo
 
 There are two distinct contracts in the system, and it helps to keep them apart:
 
-1. **Between modules — the wire contract.** Modules never import each other; they
-   only exchange messages. So the *inter-module* interface is the pair
-   **topics + message schemas** in `common/` (above). A sensor depends on
-   `OccupancyEvent`, not on `storage`.
-2. **Inside each module — the code port.** Each module folder declares its own role
-   as a small `typing.Protocol` in a `base.py`, so a concrete implementation can be
+1. **Across processes and for runtime signals — the wire contract.** Components
+   exchange events and commands through **topics + message schemas** in `common/`.
+   A sensor publishes `OccupancyEvent`; it does not call `storage`.
+2. **For in-process composition — the code port.** Each module folder declares its
+   role as a small `typing.Protocol` in a `base.py`, so a concrete implementation can be
    swapped (real hardware ↔ simulation, in-memory store ↔ DB, one planner ↔ another)
-   without touching anyone else. These are structural `@runtime_checkable` Protocols;
-   `tests/test_interfaces.py` enforces that every implementation satisfies its port.
+   without changing its consumers. A composition root may pass one of these ports to a
+   service in the same process. These are structural `@runtime_checkable` Protocols;
+   `tests/test_interfaces.py` enforces that implementations satisfy their ports.
 
 All bus-attached parts share one tiny lifecycle interface,
 `parking.common.Component` (`start()` / `stop()`), so an entrypoint in `apps/` can
@@ -65,7 +69,7 @@ wire and run a mixed bag of them uniformly.
 
 | Module | Port (`base.py`) | Shipped implementation | Stand-in (simulation) |
 |---|---|---|---|
-| `sensors/` | `Sensor` (a `Component`) | `OccupancySensor`, `GateMotionSensor`, `NfcReader`, `DurationDial` *(skeletons)* | `SimulatedSensors` |
+| `sensors/` | `Sensor` (a `Component`) | `OccupancySensor`, `GateMotionSensor`, `NfcReader`, `DurationDial` *(skeletons)* | `SimulatedSensors` *(multi-sensor helper, not one `Sensor`)* |
 | `actuators/` | `Actuator` (a `Component`) | `GateMotor`, `BufferLed`, `VehicleMover` *(skeletons)* | `RecordingActuators` |
 | `dispatching/` | `Dispatcher` (a `Component`) | `PlanDispatcher` *(skeleton)* | `ReactiveGateController` |
 | `storage/` | `OccupancyStore` / `CustomerStore` / `StateStore` | `InMemoryStore` | `OccupancyTracker` *(implements `OccupancyStore`)* |

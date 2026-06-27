@@ -16,7 +16,7 @@ from parking.planning import ForwardSearchPlanner, Planner
 from parking.problem_generation import PddlProblemGenerator, ProblemGenerator
 from parking.sensors import DurationDial, GateMotionSensor, NfcReader, OccupancySensor, Sensor
 from parking.storage import Customer, InMemoryStore, OccupancyStore, StateStore, StorageService
-from parking.simulation import OccupancyTracker, ReactiveGateController
+from parking.simulation import OccupancyTracker, ReactiveGateController, RecordingActuators
 from parking.visualization import ConsoleLotView, View
 
 
@@ -54,8 +54,16 @@ def test_view_implements_interface():
 
 def test_simulation_standins_implement_their_ports():
     bus = MemoryBus()
+    assert isinstance(RecordingActuators(bus), Actuator)
     assert isinstance(OccupancyTracker(bus), OccupancyStore)
     assert isinstance(ReactiveGateController(bus), Component)
+
+
+def test_pddl_domain_declares_valid_core_requirements():
+    with open("parking/planning/domain/domain.pddl", encoding="utf-8") as domain:
+        requirements = domain.read()
+    assert ":strips" in requirements
+    assert ":strict" not in requirements
 
 
 def test_in_memory_store_roundtrips():
