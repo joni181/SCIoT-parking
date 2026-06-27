@@ -43,4 +43,9 @@ class InMemoryStore(StateStore):
     def spot_of_vehicle(self, vehicle_uid: str) -> Optional[str]:
         return self._vehicle_spot.get(vehicle_uid)
 
+    # --- convenience (impl-only, not part of the StateStore interface) -----
+    def occupied_spots(self) -> List[str]:
+        """The spots currently marked occupied (handy for logging / a dump)."""
+        return sorted(spot for spot, occ in self._occupied.items() if occ)
+
     # TODO: persist to disk / a real DB so state survives a restart.

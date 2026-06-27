@@ -7,6 +7,7 @@ that keeps the scaffolded drivers and the contracts in `*/base.py` from drifting
 apart as the real implementations land.
 """
 from parking.common import Component
+from parking.common import models as m
 from parking.common.messaging import MemoryBus
 
 from parking.actuators import Actuator, BufferLed, GateMotor, VehicleMover
@@ -14,7 +15,7 @@ from parking.dispatching import Dispatcher, PlanDispatcher
 from parking.planning import ForwardSearchPlanner, Planner
 from parking.problem_generation import PddlProblemGenerator, ProblemGenerator
 from parking.sensors import DurationDial, GateMotionSensor, NfcReader, OccupancySensor, Sensor
-from parking.storage import Customer, InMemoryStore, OccupancyStore, StateStore
+from parking.storage import Customer, InMemoryStore, OccupancyStore, StateStore, StorageService
 from parking.simulation import OccupancyTracker, ReactiveGateController
 from parking.visualization import ConsoleLotView, View
 
@@ -78,3 +79,18 @@ def test_stub_pipeline_problem_to_plan_runs():
     assert plan.problem_id == problem.problem_id
     # An empty plan is a valid no-op for the dispatcher.
     PlanDispatcher(MemoryBus()).execute(plan)
+
+
+def test_storage_service_updates_store_from_bus():
+    """The laptop's StorageService keeps a real StateStore current from events."""
+    bus = MemoryBus()
+    store = InMemoryStore()
+    service = StorageService(bus, store)
+    assert isinstance(service, Component)
+    service.start()
+
+    bus.publish_message(m.OccupancyEvent(spot_id="P1", occupied=True))
+    assert store.occupied_spots() == ["P1"]
+
+    bus.publish_message(m.NfcScanEvent(uid="AB12CD34", reader=m.READER_GATE))
+    assert store.customer_for("AB12CD34") is not None
