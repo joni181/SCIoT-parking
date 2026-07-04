@@ -1,0 +1,11 @@
+# Copy this file to config/config.yaml and edit the values for your setup.
+# config/config.yaml is git-ignored, so every machine keeps its own.
+
+# Address of the machine running the broker (deploy/broker.py).
+# On the laptop (which hosts the broker) localhost is fine.
+# On the Raspberry Pi, set this to the laptop's LAN IP, e.g. 192.168.0.10.
+broker_host: 127.0.0.1
+broker_port: 1883
+
+# Free-form label for this node (shows up in MQTT client ids / logs).
+node_name: laptop
