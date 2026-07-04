@@ -26,6 +26,7 @@ class Customer:
     uid: str
     vehicle_uid: str = ""
     expected_minutes: Optional[int] = None
+    ready_for_pickup: bool = False
 
 
 @runtime_checkable
@@ -52,6 +53,14 @@ class CustomerStore(Protocol):
     def set_vehicle_spot(self, vehicle_uid: str, spot_id: str) -> None: ...
 
     def spot_of_vehicle(self, vehicle_uid: str) -> Optional[str]: ...
+
+    def customers(self) -> List[Customer]:
+        """Return a stable snapshot of all registered customers."""
+        ...
+
+    def vehicle_locations(self) -> dict[str, str]:
+        """Return a snapshot of the vehicle-to-location mapping."""
+        ...
 
 
 @runtime_checkable

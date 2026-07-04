@@ -16,8 +16,8 @@ This keeps deployment decisions in the launch entrypoints under `apps/`.
 - **Raspberry Pi node** (`apps/pi_node.py`): actuator and sensor skeletons plus reactive
   gate control; simulated sensors are the default until hardware drivers are implemented.
 - **Laptop node** (`apps/laptop_node.py`): storage + console visualization.
-- The **AI planner** is deployment-agnostic and currently runs as the optional standalone
-  `apps/planner.py` service; problem generation is not wired into a node yet.
+- The **AI planner** is deployment-agnostic. It runs in `apps/laptop_node.py` by
+  default, or as `apps/planner.py` when deployed separately.
 
 ## Modules (`parking/`)
 
@@ -38,8 +38,8 @@ Topic names live in `parking/common/topics.py` as the single source of truth, an
 message schemas in `parking/common/models/`. Sensors publish events; storage and
 visualization subscribe; a planner service consumes generated problems and publishes
 plans; the dispatcher consumes plans and publishes actuator commands. Problem
-generation itself is currently a pure `StateStore` consumer and is not yet wired to a
-trigger. Broker config and run scripts live in `deploy/`.
+generation reads `StateStore` after occupancy, NFC, dial, and vehicle-move events.
+Broker config and run scripts live in `deploy/`.
 
 The bus (`parking/common/messaging/`) has two transports: `MqttBus` (real run) and
 `MemoryBus` (in-process, for testing the whole flow with no broker/hardware via the
@@ -71,10 +71,10 @@ wire and run a mixed bag of them uniformly.
 |---|---|---|---|
 | `sensors/` | `Sensor` (a `Component`) | `OccupancySensor`, `GateMotionSensor`, `NfcReader`, `DurationDial` *(skeletons)* | `SimulatedSensors` *(multi-sensor helper, not one `Sensor`)* |
 | `actuators/` | `Actuator` (a `Component`) | `GateMotor`, `BufferLed`, `VehicleMover` *(skeletons)* | `RecordingActuators` |
-| `dispatching/` | `Dispatcher` (a `Component`) | `PlanDispatcher` *(skeleton)* | `ReactiveGateController` |
+| `dispatching/` | `Dispatcher` (a `Component`) | `PlanDispatcher` | `ReactiveGateController` |
 | `storage/` | `OccupancyStore` / `CustomerStore` / `StateStore` | `InMemoryStore` | `OccupancyTracker` *(implements `OccupancyStore`)* |
-| `problem_generation/` | `ProblemGenerator` | `PddlProblemGenerator` *(skeleton)* | — |
-| `planning/` | `Planner` | `ForwardSearchPlanner` *(skeleton)* + `domain/domain.pddl` | — |
+| `problem_generation/` | `ProblemGenerator` | `PddlProblemGenerator` + bus service | — |
+| `planning/` | `Planner` | `ForwardSearchPlanner` + bus service + `domain/domain.pddl` | — |
 | `visualization/` | `View` (a `Component`) | `ConsoleLotView` *(skeleton)* | `OccupancyTracker` doubles as viz |
 
 *Skeletons* carry the real interface and `TODO`s where the hardware/algorithm drops

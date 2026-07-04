@@ -14,7 +14,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple
 
 
 @dataclass
@@ -22,6 +22,8 @@ class Settings:
     broker_host: str = "localhost"
     broker_port: int = 1883
     node_name: str = "node"  # free-form label used in client ids / log lines
+    parking_spots: Tuple[str, ...] = ("P1", "P2", "P3")
+    buffer_spots: Tuple[str, ...] = ("B1",)
 
 
 def _repo_root() -> Path:
@@ -45,14 +47,20 @@ def _apply_yaml(base: Settings, path: Path) -> Settings:
         broker_host=raw.get("broker_host", base.broker_host),
         broker_port=int(raw.get("broker_port", base.broker_port)),
         node_name=raw.get("node_name", base.node_name),
+        parking_spots=tuple(raw.get("parking_spots", base.parking_spots)),
+        buffer_spots=tuple(raw.get("buffer_spots", base.buffer_spots)),
     )
 
 
 def _apply_env(base: Settings) -> Settings:
+    parking_spots = os.environ.get("PARKING_SPOTS")
+    buffer_spots = os.environ.get("PARKING_BUFFER_SPOTS")
     return Settings(
         broker_host=os.environ.get("PARKING_BROKER_HOST", base.broker_host),
         broker_port=int(os.environ.get("PARKING_BROKER_PORT", base.broker_port)),
         node_name=os.environ.get("PARKING_NODE_NAME", base.node_name),
+        parking_spots=tuple(parking_spots.split(",")) if parking_spots else base.parking_spots,
+        buffer_spots=tuple(buffer_spots.split(",")) if buffer_spots else base.buffer_spots,
     )
 
 

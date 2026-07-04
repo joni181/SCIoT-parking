@@ -26,6 +26,7 @@ from parking.common import load_settings  # noqa: E402
 from parking.common import models as m  # noqa: E402
 from parking.common.messaging import MqttBus  # noqa: E402
 from parking.actuators import BufferLed, GateMotor, VehicleMover  # noqa: E402
+from parking.dispatching import PlanDispatcher  # noqa: E402
 from parking.sensors import DurationDial, GateMotionSensor, NfcReader, OccupancySensor  # noqa: E402
 from parking.simulation import ReactiveGateController, SimulatedSensors  # noqa: E402
 
@@ -43,6 +44,7 @@ def pi_components(bus: MqttBus) -> list:
         GateMotor(bus),
         BufferLed(bus),
         VehicleMover(bus),
+        PlanDispatcher(bus),
         # Reactive gate rule. Lives in `simulation` for now; destined for
         # `parking.dispatching` (see docs/message-flow.md "Open decisions").
         ReactiveGateController(bus, known_uids=[REGISTERED_CARD]),

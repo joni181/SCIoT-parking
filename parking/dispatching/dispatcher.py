@@ -1,9 +1,9 @@
-"""Plan-executing dispatcher (skeleton).
+"""Plan-executing dispatcher.
 
 Subscribes to `PlanMessage`s (in `start()`) and, for each, walks the ordered
 `actions` and emits the matching actuator command. The action vocabulary is
 defined by the PDDL domain in `parking/planning/domain`; mapping each action
-name to a command is the `TODO` below.
+name to its corresponding vehicle-move command.
 """
 from __future__ import annotations
 
@@ -30,9 +30,24 @@ class PlanDispatcher(Dispatcher):
             self._dispatch(action)
 
     def _dispatch(self, action: dict) -> None:
-        # TODO: map an action {"name": ..., "args": [...]} to a command, e.g.
-        #   "park"     -> VehicleMoveCommand(from_spot=buffer, to_spot=spot)
-        #   "retrieve" -> VehicleMoveCommand(from_spot=spot, to_spot=buffer)
-        #   "open_gate"-> GateCommand(action=m.GATE_OPEN)
-        # then self._bus.publish_message(cmd).
-        ...
+        name = action.get("name")
+        args = action.get("args", [])
+        if name == "park" and len(args) == 3:
+            car, buffer, spot = args
+            command = m.VehicleMoveCommand(
+                vehicle_uid=car,
+                from_spot=buffer,
+                to_spot=spot,
+                source=self._source,
+            )
+        elif name == "retrieve" and len(args) == 3:
+            car, spot, buffer = args
+            command = m.VehicleMoveCommand(
+                vehicle_uid=car,
+                from_spot=spot,
+                to_spot=buffer,
+                source=self._source,
+            )
+        else:
+            raise ValueError(f"unsupported or malformed planner action: {action!r}")
+        self._bus.publish_message(command)
