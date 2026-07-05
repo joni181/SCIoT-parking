@@ -61,10 +61,14 @@ class RecordingActuators:
         self.gate_commands: List[m.GateCommand] = []
         self.led_commands: List[m.BufferLedCommand] = []
         self.vehicle_moves: List[m.VehicleMoveCommand] = []
+        self.spot_displays: List[m.ParkingSpotDisplayCommand] = []
+        self.admission_results: List[m.AdmissionResult] = []
 
         bus.subscribe_message(m.GateCommand.TOPIC, self.gate_commands.append)
         bus.subscribe_message(m.BufferLedCommand.TOPIC, self.led_commands.append)
         bus.subscribe_message(m.VehicleMoveCommand.TOPIC, self.vehicle_moves.append)
+        bus.subscribe_message(m.ParkingSpotDisplayCommand.TOPIC, self.spot_displays.append)
+        bus.subscribe_message(m.AdmissionResult.TOPIC, self.admission_results.append)
 
     def start(self) -> None:  # subscriptions are wired in __init__
         ...

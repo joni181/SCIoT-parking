@@ -40,6 +40,9 @@ class InMemoryStore(StateStore):
     def set_vehicle_spot(self, vehicle_uid: str, spot_id: str) -> None:
         self._vehicle_spot[vehicle_uid] = spot_id
 
+    def remove_vehicle(self, vehicle_uid: str) -> None:
+        self._vehicle_spot.pop(vehicle_uid, None)
+
     def spot_of_vehicle(self, vehicle_uid: str) -> Optional[str]:
         return self._vehicle_spot.get(vehicle_uid)
 

@@ -25,7 +25,7 @@ This keeps deployment decisions in the launch entrypoints under `apps/`.
 |---|---|---|
 | `common/` | Communication layer + shared contracts: MQTT client wrapper, topic catalog, message schemas, config. Used identically by both nodes. | both |
 | `sensors/` | Drivers for NFC reader, light, motion, rotary sensors. Publish raw events. | Pi |
-| `actuators/` | Drivers for gate stepper motor, buffer LED, (simulated) vehicle motion. | Pi |
+| `actuators/` | Drivers for gate servo, spot/buffer LED, and simulated vehicle motion. | Pi |
 | `dispatching/` | Consume planner output; command actuators to execute the plan. | Pi |
 | `storage/` | Vehicle-to-spot mapping and customer DB (customer-vehicle, estimated duration). | laptop |
 | `problem_generation/` | Translate current occupancy + customer state into a PDDL problem. | laptop |

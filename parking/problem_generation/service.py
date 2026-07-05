@@ -17,8 +17,6 @@ class ProblemGenerationService:
         for topic in (
             m.OccupancyEvent.TOPIC,
             m.NfcScanEvent.TOPIC,
-            m.DurationDialEvent.TOPIC,
-            m.VehicleMoveCommand.TOPIC,
         ):
             self._bus.subscribe_message(topic, self._on_state_change)
 

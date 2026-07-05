@@ -27,6 +27,21 @@ class PlannerService:
             # spots and the buffer are occupied). Keep the service alive; the
             # next state event will generate and solve a fresh problem.
             self.last_error = exc
+            if problem.purpose == "arrival":
+                self._bus.publish_message(m.AdmissionResult(
+                    vehicle_uid=problem.request_uid,
+                    accepted=False,
+                    reason=str(exc),
+                    source="planning",
+                ))
             return
         self.last_error = None
+        if problem.purpose == "arrival":
+            assigned = next((a["args"][1] for a in plan.actions if a["name"] == "assign"), "")
+            self._bus.publish_message(m.AdmissionResult(
+                vehicle_uid=problem.request_uid,
+                accepted=True,
+                assigned_spot=assigned,
+                source="planning",
+            ))
         self._bus.publish_message(plan)

@@ -32,7 +32,25 @@ class PlanDispatcher(Dispatcher):
     def _dispatch(self, action: dict) -> None:
         name = action.get("name")
         args = action.get("args", [])
-        if name == "park" and len(args) == 3:
+        if name == "assign" and len(args) == 2:
+            car, spot = args
+            # The following open-entry action carries the chosen buffer. The
+            # default is retained only for malformed externally supplied plans.
+            command = m.ParkingAssignmentCommand(
+                vehicle_uid=car, spot_id=spot, buffer_id="B1", source=self._source
+            )
+        elif name == "open-entry" and len(args) == 3:
+            car, buffer, spot = args
+            self._bus.publish_message(m.ParkingAssignmentCommand(
+                vehicle_uid=car, buffer_id=buffer, spot_id=spot, source=self._source
+            ))
+            command = m.GateCommand(action=m.GATE_OPEN, source=self._source)
+        elif name == "show-assignment" and len(args) == 3:
+            car, spot, _buffer = args
+            command = m.ParkingSpotDisplayCommand(
+                vehicle_uid=car, spot_id=spot, on=True, source=self._source
+            )
+        elif name == "park" and len(args) == 3:
             car, buffer, spot = args
             command = m.VehicleMoveCommand(
                 vehicle_uid=car,
@@ -48,6 +66,12 @@ class PlanDispatcher(Dispatcher):
                 to_spot=buffer,
                 source=self._source,
             )
+        elif name == "open-exit" and len(args) == 2:
+            car, buffer = args
+            self._bus.publish_message(m.ExitAuthorizationCommand(
+                vehicle_uid=car, buffer_id=buffer, source=self._source
+            ))
+            command = m.GateCommand(action=m.GATE_OPEN, source=self._source)
         else:
             raise ValueError(f"unsupported or malformed planner action: {action!r}")
         self._bus.publish_message(command)

@@ -15,8 +15,23 @@ needs:
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+import time
+from dataclasses import dataclass, field
 from typing import Iterable, List, Optional, Protocol, runtime_checkable
+
+
+ARRIVAL_REQUESTED = "arrival_requested"
+ENTRY_AUTHORIZED = "entry_authorized"
+IN_BUFFER = "in_buffer"
+PARKING = "parking"
+PARKED = "parked"
+PICKUP_REQUESTED = "pickup_requested"
+RETRIEVING = "retrieving"
+READY_FOR_PICKUP = "ready_for_pickup"
+EXIT_AUTHORIZED = "exit_authorized"
+DEPARTED = "departed"
+REJECTED = "rejected"
+OUTSIDE = "OUTSIDE"
 
 
 @dataclass
@@ -27,6 +42,11 @@ class Customer:
     vehicle_uid: str = ""
     expected_minutes: Optional[int] = None
     ready_for_pickup: bool = False
+    status: str = DEPARTED
+    assigned_spot: str = ""
+    assigned_buffer: str = ""
+    checkout_requested: bool = False
+    requested_at: float = field(default_factory=time.time)
 
 
 @runtime_checkable
@@ -51,6 +71,8 @@ class CustomerStore(Protocol):
     def customer_for(self, uid: str) -> Optional[Customer]: ...
 
     def set_vehicle_spot(self, vehicle_uid: str, spot_id: str) -> None: ...
+
+    def remove_vehicle(self, vehicle_uid: str) -> None: ...
 
     def spot_of_vehicle(self, vehicle_uid: str) -> Optional[str]: ...
 
