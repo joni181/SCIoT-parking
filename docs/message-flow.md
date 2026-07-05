@@ -61,8 +61,12 @@ Each topic carries one message type (in
 | `parking/commands/gate` | control / dispatcher | actuators (gate) | `GateCommand` |
 | `parking/commands/buffer_led` | control / dispatcher | actuators (LED) | `BufferLedCommand` |
 | `parking/commands/vehicle_move` | dispatcher | actuators (vehicle) | `VehicleMoveCommand` |
+| `parking/commands/parking_assignment` | dispatcher | storage | `ParkingAssignmentCommand` |
+| `parking/commands/spot_display` | dispatcher | indicator/display | `ParkingSpotDisplayCommand` |
+| `parking/commands/exit_authorization` | dispatcher | storage | `ExitAuthorizationCommand` |
 | `parking/planning/problem` | problem_generation | planner | `ProblemMessage` |
 | `parking/planning/plan` | planner | dispatching, viz | `PlanMessage` |
+| `parking/planning/admission` | planner | storage, viz | `AdmissionResult` |
 
 Group wildcards for broad subscribers: `parking/events/#`, `parking/commands/#`,
 `parking/#`. IDs (which spot, which reader) live **in the payload**, not the
@@ -88,8 +92,12 @@ bus.publish_message(m.OccupancyEvent(spot_id="P1", occupied=True))
 | `GateCommand` | `action` (`open`/`close`) |
 | `BufferLedCommand` | `slot_id`, `on` |
 | `VehicleMoveCommand` | `vehicle_uid`, `from_spot`, `to_spot` |
-| `ProblemMessage` | `problem_id`, `pddl` |
+| `ParkingAssignmentCommand` | `vehicle_uid`, `buffer_id`, `spot_id` |
+| `ParkingSpotDisplayCommand` | `vehicle_uid`, `spot_id`, `on` |
+| `ExitAuthorizationCommand` | `vehicle_uid`, `buffer_id` |
+| `ProblemMessage` | `problem_id`, `pddl`, `request_uid`, `purpose` |
 | `PlanMessage` | `problem_id`, `actions` (`[{name, args}]`) |
+| `AdmissionResult` | `vehicle_uid`, `accepted`, `reason`, `assigned_spot` |
 
 ## The two driving scenarios
 
@@ -97,11 +105,11 @@ bus.publish_message(m.OccupancyEvent(spot_id="P1", occupied=True))
 `OccupancyEvent(spot_id="P1", occupied=True)`; on the laptop, `storage` updates
 the map and `visualization` redraws.
 
-**2 — a car at the gate → the gate opens.** Motion sensor publishes
-`GateMotionEvent(present=True)`; the gate NFC reader publishes
-`NfcScanEvent(reader="gate", uid=...)`. Control opens the gate **only when both
-hold** (car present + recognised card) via `GateCommand(action="open")`; the
-gate-motor driver acts on it. When motion clears it sends `close`.
+**2 — a car at the gate is admitted by the planner.** Dial and NFC events create
+an arrival request. The PDDL problem requires a free buffer and reservable spot.
+A successful plan assigns the spot, opens the servo, and shows the assignment;
+otherwise an explicit rejection is published and the gate stays closed. Gate
+closure remains reactive after motion confirms that the vehicle cleared it.
 
 Both run as tests (no hardware) in
 [`tests/test_scenarios.py`](../tests/test_scenarios.py).
@@ -120,9 +128,7 @@ broker IP/port: see the **[Getting started guide](../README.md)**.
 
 ## Open decisions
 
-1. **Gate = reactive vs. planned.** Demo opens the gate with a reactive rule;
-   recommendation: keep the gate reactive in `dispatching`, reserve the planner
-   for spot assignment / vehicle moves. (Layer supports both.)
+1. Gate opening is planner-authorized; gate closure is reactive for safety.
 2. **IDs in payload** (current) vs. per-spot topics. Current is simpler.
 3. **Broker location** — laptop by default; any node works.
 4. **QoS 0, nothing retained.** Add retained state snapshots later if viz should

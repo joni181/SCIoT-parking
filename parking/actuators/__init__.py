@@ -8,6 +8,6 @@ Every driver implements `Actuator`: it subscribes to a command topic from
 `parking.simulation` is the hardware-free test double.
 """
 from .base import Actuator
-from .drivers import BufferLed, GateMotor, VehicleMover
+from .drivers import BufferLed, GateMotor, GateServo, VehicleMover
 
-__all__ = ["Actuator", "GateMotor", "BufferLed", "VehicleMover"]
+__all__ = ["Actuator", "GateServo", "GateMotor", "BufferLed", "VehicleMover"]

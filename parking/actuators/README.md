@@ -3,7 +3,7 @@
 Hardware drivers for the physical actuators. Subscribe to actuator commands on the bus
 and drive the devices.
 
-Devices: gate (stepper motor), buffer occupancy indicator (LED), vehicle motion
+Devices: gate (servo motor), parking/buffer indicator (LED), vehicle motion
 (human-simulated in the demo).
 
 **Interface:** [`Actuator`](base.py) (a `Component`). Drivers (skeletons) in

@@ -56,6 +56,8 @@ Edit `config/config.yaml`:
 - **Laptop:** leave `broker_host: 127.0.0.1`.
 - **Pi:** set `broker_host` to the laptop's **LAN IP** (e.g. `192.168.0.10`) and
   `node_name: pi`. Both machines must be on the same network.
+- List `parking_spots` nearest-to-entrance first and configure `buffer_spots`;
+  these values define the objects available to generated PDDL problems.
 
 `config/config.yaml` is git-ignored, so each machine keeps its own. (One-off
 override without editing the file: `PARKING_BROKER_HOST=… PARKING_BROKER_PORT=…`.)

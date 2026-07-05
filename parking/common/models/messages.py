@@ -145,7 +145,7 @@ class DurationDialEvent(Message):
 @_register
 @dataclass
 class GateCommand(Message):
-    """Open or close the entrance gate (stepper motor)."""
+    """Open or close the entrance gate servo."""
 
     TYPE = "gate_cmd"
     TOPIC = topics.CMD_GATE
@@ -178,6 +178,44 @@ class VehicleMoveCommand(Message):
     to_spot: str = ""
 
 
+@_register
+@dataclass
+class ParkingAssignmentCommand(Message):
+    """Reserve a parking spot and entrance buffer for an arriving vehicle."""
+
+    TYPE = "parking_assignment_cmd"
+    TOPIC = topics.CMD_PARKING_ASSIGNMENT
+
+    vehicle_uid: str = ""
+    buffer_id: str = ""
+    spot_id: str = ""
+
+
+@_register
+@dataclass
+class ParkingSpotDisplayCommand(Message):
+    """Show or hide the assigned parking spot for a customer."""
+
+    TYPE = "spot_display_cmd"
+    TOPIC = topics.CMD_SPOT_DISPLAY
+
+    vehicle_uid: str = ""
+    spot_id: str = ""
+    on: bool = True
+
+
+@_register
+@dataclass
+class ExitAuthorizationCommand(Message):
+    """Record that a ready vehicle is authorized to leave through the gate."""
+
+    TYPE = "exit_authorization_cmd"
+    TOPIC = topics.CMD_EXIT_AUTHORIZATION
+
+    vehicle_uid: str = ""
+    buffer_id: str = ""
+
+
 # ===========================================================================
 # Planning - laptop internal (problem generator -> planner -> dispatcher).
 # ===========================================================================
@@ -191,6 +229,8 @@ class ProblemMessage(Message):
 
     problem_id: str = ""
     pddl: str = ""
+    request_uid: str = ""
+    purpose: str = ""
 
 
 @_register
@@ -206,3 +246,17 @@ class PlanMessage(Message):
 
     problem_id: str = ""
     actions: List[Dict[str, Any]] = field(default_factory=list)
+
+
+@_register
+@dataclass
+class AdmissionResult(Message):
+    """Outcome of an arrival request after planning."""
+
+    TYPE = "admission_result"
+    TOPIC = topics.PLANNING_ADMISSION
+
+    vehicle_uid: str = ""
+    accepted: bool = False
+    reason: str = ""
+    assigned_spot: str = ""

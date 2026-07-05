@@ -9,3 +9,7 @@ broker_port: 1883
 
 # Free-form label for this node (shows up in MQTT client ids / logs).
 node_name: laptop
+
+# Nearest-to-entrance first; shorter expected stays are assigned first.
+parking_spots: [P1, P2, P3]
+buffer_spots: [B1]
