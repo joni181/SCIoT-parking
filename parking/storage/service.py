@@ -112,7 +112,14 @@ class StorageService:
         if customer is None:
             return
         self._pending_moves[msg.vehicle_uid] = msg
-        customer.status = RETRIEVING if msg.to_spot == customer.assigned_buffer else PARKING
+        if customer.assigned_spot and msg.from_spot == customer.assigned_spot:
+            # Retrieval chooses a buffer at the time checkout is planned. A
+            # parked/shopping customer must not keep a long-lived buffer
+            # reservation, so the selected buffer is captured from the move.
+            customer.assigned_buffer = msg.to_spot
+            customer.status = RETRIEVING
+        else:
+            customer.status = PARKING
         self._store.upsert_customer(customer)
 
     def _on_occupancy(self, msg: m.OccupancyEvent) -> None:
@@ -126,23 +133,38 @@ class StorageService:
                 self._store.set_vehicle_spot(entrant.vehicle_uid, msg.spot_id)
                 self._store.upsert_customer(entrant)
 
-            for vehicle_uid, move in list(self._pending_moves.items()):
-                if move.to_spot != msg.spot_id:
-                    continue
-                customer = self._customer_by_vehicle(vehicle_uid)
-                if customer is None:
-                    continue
-                self._store.set_vehicle_spot(vehicle_uid, msg.spot_id)
-                if msg.spot_id == customer.assigned_buffer:
-                    customer.status = READY_FOR_PICKUP
-                    customer.ready_for_pickup = True
-                else:
-                    customer.status = PICKUP_REQUESTED if customer.checkout_requested else PARKED
-                self._store.upsert_customer(customer)
-                self._pending_moves.pop(vehicle_uid, None)
+        # A physical move is confirmed only when both sensor observations are
+        # true: the source is free and the commanded destination is occupied.
+        # Events may arrive in either order, so re-check every pending move
+        # after every occupancy change.
+        self._complete_pending_moves()
 
         if not msg.occupied:
             self._complete_departures()
+
+    def _complete_pending_moves(self) -> None:
+        for vehicle_uid, move in list(self._pending_moves.items()):
+            if self._store.is_occupied(move.from_spot) or not self._store.is_occupied(move.to_spot):
+                continue
+            customer = self._customer_by_vehicle(vehicle_uid)
+            if customer is None:
+                self._pending_moves.pop(vehicle_uid, None)
+                continue
+            self._store.set_vehicle_spot(vehicle_uid, move.to_spot)
+            if move.to_spot == customer.assigned_buffer:
+                customer.status = READY_FOR_PICKUP
+                customer.ready_for_pickup = True
+                # The parking space is no longer reserved once retrieval has
+                # been physically confirmed at the buffer.
+                customer.assigned_spot = ""
+            else:
+                customer.status = PICKUP_REQUESTED if customer.checkout_requested else PARKED
+                # The entry buffer reservation ends once the car is physically
+                # parked. From this point B1 is available for another arrival
+                # or retrieval until this customer actually checks out.
+                customer.assigned_buffer = ""
+            self._store.upsert_customer(customer)
+            self._pending_moves.pop(vehicle_uid, None)
 
     def _complete_departures(self) -> None:
         if self._gate_present:

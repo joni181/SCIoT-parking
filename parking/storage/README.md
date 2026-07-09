@@ -11,4 +11,9 @@ implementation [`InMemoryStore`](memory_store.py); `OccupancyTracker` in
 `StorageService` pairs the duration dial with the next gate scan and tracks each
 vehicle through arrival request, admission, buffer, parking, retrieval, pickup,
 and departure states. Move commands reserve resources; sensor events confirm
-the actual location before the next planning phase begins.
+the actual location before the next planning phase begins. A move completes
+only after its source sensor reports free and its destination reports occupied.
+The entry buffer reservation is released as soon as the car is physically parked,
+so B1 remains available while the customer is shopping. Checkout creates a fresh
+buffer reservation for retrieval, and retrieval confirmation releases the former
+parking-space assignment immediately.

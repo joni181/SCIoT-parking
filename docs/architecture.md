@@ -15,7 +15,7 @@ This keeps deployment decisions in the launch entrypoints under `apps/`.
 
 - **Raspberry Pi node** (`apps/pi_node.py`): actuator and sensor skeletons plus reactive
   gate control; simulated sensors are the default until hardware drivers are implemented.
-- **Laptop node** (`apps/laptop_node.py`): storage + console visualization.
+- **Laptop node** (`apps/laptop_node.py`): storage + local Dash operator dashboard.
 - The **AI planner** is deployment-agnostic. It runs in `apps/laptop_node.py` by
   default, or as `apps/planner.py` when deployed separately.
 
@@ -30,7 +30,7 @@ This keeps deployment decisions in the launch entrypoints under `apps/`.
 | `storage/` | Vehicle-to-spot mapping and customer DB (customer-vehicle, estimated duration). | laptop |
 | `problem_generation/` | Translate current occupancy + customer state into a PDDL problem. | laptop |
 | `planning/` | PDDL domain (`domain/`) + forward-search classical planner. | either |
-| `visualization/` | Parking-lot state display + plan-execution display (Python). | laptop |
+| `visualization/` | Operator dashboard: current instruction, parking-lot/gate state, assignments, and diagnostics. | laptop |
 
 ## Communication
 
@@ -75,11 +75,18 @@ wire and run a mixed bag of them uniformly.
 | `storage/` | `OccupancyStore` / `CustomerStore` / `StateStore` | `InMemoryStore` | `OccupancyTracker` *(implements `OccupancyStore`)* |
 | `problem_generation/` | `ProblemGenerator` | `PddlProblemGenerator` + bus service | — |
 | `planning/` | `Planner` | `ForwardSearchPlanner` + bus service + `domain/domain.pddl` | — |
-| `visualization/` | `View` (a `Component`) | `ConsoleLotView` *(skeleton)* | `OccupancyTracker` doubles as viz |
+| `visualization/` | `View` (a `Component`) | `DashboardView` + thread-safe `DashboardModel`; `ConsoleLotView` fallback | `OccupancyTracker` doubles as viz |
 
 *Skeletons* carry the real interface and `TODO`s where the hardware/algorithm drops
 in — so teammates can build a module against its port today and the message flow keeps
 running.
+
+The dashboard uses the laptop's shared `StateStore` for lifecycle/assignment
+snapshots and observes `parking/#` for transient gate, plan, admission and
+activity state. Gate state is shown inside the physical lot map; plans and raw
+activity are diagnostics, not the main operator workflow. MQTT callbacks only
+update a locked immutable projection; the browser polls that projection every
+500 ms. The production view never publishes control messages.
 
 ## Dependencies
 
