@@ -14,3 +14,10 @@ The component-shaped stand-ins speak the corresponding real module interfaces.
 | `RecordingActuators` | records actuator commands | [`Actuator`](../actuators/base.py) test double for the hardware drivers |
 | `ReactiveGateController` | open/close gate on motion + known card | [`Component`](../common/component.py); foreshadows [`dispatching`](../dispatching/README.md) |
 | `OccupancyTracker` | track spot occupancy from events | [`OccupancyStore`](../storage/base.py); stands in for [`storage`](../storage/README.md) + [`visualization`](../visualization/README.md) |
+
+`GuidedScenarioController` and `MqttDemoSystem` power the standalone laptop
+dashboard example. Unlike the small `MemoryBus` walkthrough, they use two real
+MQTT clients and wait for actual planner/dispatcher commands before confirming
+simulated physical movement. Start/advance/reset controls are exposed only in the
+demo dashboard, never in the production laptop view. Scenarios wait at every
+human/sensor boundary until **Advance simulation** is pressed.

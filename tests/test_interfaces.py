@@ -17,7 +17,7 @@ from parking.problem_generation import PddlProblemGenerator, ProblemGenerator
 from parking.sensors import DurationDial, GateMotionSensor, NfcReader, OccupancySensor, Sensor
 from parking.storage import Customer, InMemoryStore, OccupancyStore, StateStore, StorageService
 from parking.simulation import OccupancyTracker, ReactiveGateController, RecordingActuators
-from parking.visualization import ConsoleLotView, View
+from parking.visualization import ConsoleLotView, DashboardModel, DashboardView, View
 
 
 def test_sensor_drivers_implement_sensor():
@@ -49,7 +49,10 @@ def test_problem_generator_and_planner_implement_interfaces():
 
 
 def test_view_implements_interface():
-    assert isinstance(ConsoleLotView(MemoryBus()), View)
+    bus = MemoryBus()
+    assert isinstance(ConsoleLotView(bus), View)
+    model = DashboardModel(bus, InMemoryStore(), ("P1",), ("B1",))
+    assert isinstance(DashboardView(model, open_browser=False), View)
 
 
 def test_simulation_standins_implement_their_ports():

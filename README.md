@@ -56,6 +56,8 @@ Edit `config/config.yaml`:
 - **Laptop:** leave `broker_host: 127.0.0.1`.
 - **Pi:** set `broker_host` to the laptop's **LAN IP** (e.g. `192.168.0.10`) and
   `node_name: pi`. Both machines must be on the same network.
+- List `parking_spots` nearest-to-entrance first and configure `buffer_spots`;
+  these values define the objects available to generated PDDL problems.
 
 `config/config.yaml` is git-ignored, so each machine keeps its own. (One-off
 override without editing the file: `PARKING_BROKER_HOST=… PARKING_BROKER_PORT=…`.)
@@ -66,8 +68,11 @@ override without editing the file: `PARKING_BROKER_HOST=… PARKING_BROKER_PORT=
 
 ```bash
 python deploy/broker.py        # 1) the MQTT broker — keep it running
-python apps/laptop_node.py     # 2) the laptop side — watches the bus
+python apps/laptop_node.py     # 2) laptop services + operator dashboard
 ```
+
+The laptop node can run with no Raspberry Pi connected, but the broker process
+must still be running because the laptop services communicate through MQTT.
 
 **Pi** (or a third laptop terminal for a no-hardware dry run):
 
@@ -75,10 +80,27 @@ python apps/laptop_node.py     # 2) the laptop side — watches the bus
 python apps/pi_node.py         # connects to the broker and plays a scenario
 ```
 
-The Pi's events show up in `laptop_node`, and the gate command comes back — the
-full round trip across the network.
+The laptop opens its local operator dashboard at `http://127.0.0.1:8050`. It
+shows the current human instruction, the parking lot including gate state,
+buffer/parking assignments, and lifecycle state. Technical plans and recent
+MQTT activity remain available in the diagnostics section. The Pi's events show
+up there and the gate command comes back across the same broker.
 
-### Try it without hardware or a broker
+### Try it without hardware
+
+For the complete browser dashboard, real local MQTT broker, real laptop stack,
+and a guided simulated Pi in one command:
+
+```bash
+python examples/laptop_dashboard_demo.py
+```
+
+Choose a complete visit, two-car contention, or full-lot rejection in the
+browser. Press **Advance simulation** for each simulated human/sensor action;
+the current instruction remains visible until then. The example allocates
+private local ports and cleans up the broker when it stops.
+
+For the smaller in-process communication walkthrough (no broker):
 
 ```bash
 python examples/message_flow_demo.py   # both scenarios, one process

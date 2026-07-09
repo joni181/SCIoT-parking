@@ -25,10 +25,14 @@ EVT_DURATION_DIAL = f"{ROOT}/events/duration_dial"  # rotary dial: expected park
 CMD_GATE = f"{ROOT}/commands/gate"                  # open / close the gate
 CMD_BUFFER_LED = f"{ROOT}/commands/buffer_led"      # buffer-slot indicator LED on / off
 CMD_VEHICLE_MOVE = f"{ROOT}/commands/vehicle_move"  # move a car between buffer <-> spot
+CMD_PARKING_ASSIGNMENT = f"{ROOT}/commands/parking_assignment"
+CMD_SPOT_DISPLAY = f"{ROOT}/commands/spot_display"
+CMD_EXIT_AUTHORIZATION = f"{ROOT}/commands/exit_authorization"
 
 # --- Planning: laptop-internal (problem in, plan out) ---
 PLANNING_PROBLEM = f"{ROOT}/planning/problem"       # generated PDDL problem
 PLANNING_PLAN = f"{ROOT}/planning/plan"             # solved plan for the dispatcher
+PLANNING_ADMISSION = f"{ROOT}/planning/admission"   # accepted/rejected arrival request
 
 # Wildcards, handy for subscribers that want a whole group (e.g. visualization).
 ALL_EVENTS = f"{ROOT}/events/#"

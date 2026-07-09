@@ -6,8 +6,8 @@ these subscribe to the same command topic and drive a device. Subscription
 happens in `start()` (not `__init__`), so importing the package wires nothing
 and the test suite never touches the GPIO. Each implements `Actuator`.
 
-Hardware spikes for reference: experiments/led-blink-grove-pi.py (LED), and the
-stepper-motor wiring for the gate (TODO).
+Hardware spikes for reference: experiments/led-blink-grove-pi.py (LED). The
+gate actuator is a servo motor.
 """
 from __future__ import annotations
 
@@ -16,8 +16,8 @@ from ..common.messaging import MessageBus
 from .base import Actuator
 
 
-class GateMotor(Actuator):
-    """Stepper motor at the gate. Consumes `GateCommand` (open / close)."""
+class GateServo(Actuator):
+    """Servo motor at the gate. Consumes `GateCommand` (open / close)."""
 
     def __init__(self, bus: MessageBus, source: str = "pi/actuator/gate") -> None:
         self._bus = bus
@@ -27,11 +27,11 @@ class GateMotor(Actuator):
         self._bus.subscribe_message(m.GateCommand.TOPIC, self._on_command)
 
     def stop(self) -> None:
-        # TODO: de-energize / release the stepper.
+        # TODO: release the servo/GPIO resources.
         ...
 
     def _on_command(self, msg: m.GateCommand) -> None:
-        # TODO: drive the stepper open or closed based on msg.action
+        # TODO: move the servo to its open or closed angle based on msg.action
         #       (m.GATE_OPEN / m.GATE_CLOSE).
         ...
 
@@ -45,6 +45,7 @@ class BufferLed(Actuator):
 
     def start(self) -> None:
         self._bus.subscribe_message(m.BufferLedCommand.TOPIC, self._on_command)
+        self._bus.subscribe_message(m.ParkingSpotDisplayCommand.TOPIC, self._on_spot_display)
 
     def stop(self) -> None:
         # TODO: turn the LED off / release the pin.
@@ -53,6 +54,14 @@ class BufferLed(Actuator):
     def _on_command(self, msg: m.BufferLedCommand) -> None:
         # TODO: set the LED for msg.slot_id to msg.on.
         ...
+
+    def _on_spot_display(self, msg: m.ParkingSpotDisplayCommand) -> None:
+        # TODO: show msg.spot_id using the available LEDs/display hardware.
+        ...
+
+
+# Compatibility for existing imports while the project transitions terminology.
+GateMotor = GateServo
 
 
 class VehicleMover(Actuator):

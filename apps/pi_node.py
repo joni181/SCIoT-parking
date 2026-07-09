@@ -1,7 +1,7 @@
 """Raspberry Pi node: hardware I/O (sensors, actuators, dispatching).
 
-Composition root for the Pi side. It assembles the Pi's Components - the actuator
-drivers and the reactive gate controller - wires them to the broker, and starts
+Composition root for the Pi side. It assembles the Pi's Components - actuator
+drivers, plan dispatch, and reactive gate safety - wires them to the broker, and starts
 them through the uniform `Component` lifecycle (`start()` / `stop()`).
 
 Sensors are the one piece that needs real hardware. By default this runs the
@@ -25,9 +25,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from parking.common import load_settings  # noqa: E402
 from parking.common import models as m  # noqa: E402
 from parking.common.messaging import MqttBus  # noqa: E402
-from parking.actuators import BufferLed, GateMotor, VehicleMover  # noqa: E402
+from parking.actuators import BufferLed, GateServo, VehicleMover  # noqa: E402
+from parking.dispatching import GateSafetyController, PlanDispatcher  # noqa: E402
 from parking.sensors import DurationDial, GateMotionSensor, NfcReader, OccupancySensor  # noqa: E402
-from parking.simulation import ReactiveGateController, SimulatedSensors  # noqa: E402
+from parking.simulation import SimulatedSensors  # noqa: E402
 
 REGISTERED_CARD = "AB12CD34"
 PARKING_SPOTS = ["P1", "P2", "P3"]
@@ -40,31 +41,48 @@ def pi_components(bus: MqttBus) -> list:
     controller and all the bus wiring are live.
     """
     return [
-        GateMotor(bus),
+        GateServo(bus),
         BufferLed(bus),
         VehicleMover(bus),
-        # Reactive gate rule. Lives in `simulation` for now; destined for
-        # `parking.dispatching` (see docs/message-flow.md "Open decisions").
-        ReactiveGateController(bus, known_uids=[REGISTERED_CARD]),
+        PlanDispatcher(bus),
+        GateSafetyController(bus),
     ]
 
 
 def play_scenario(bus: MqttBus) -> None:
-    """Drive a short, scripted sequence of *simulated* sensor events."""
+    """Drive one complete arrival, parking, checkout, and departure cycle."""
     sensors = SimulatedSensors(bus)
     time.sleep(1.0)
 
-    print("[pi] a car parks in spot P1")
-    sensors.car_parks("P1")
-    time.sleep(1.0)
-
-    print("[pi] a registered car arrives at the gate and taps its card")
+    print("[pi] driver selects 25 minutes, arrives, and scans at the gate")
+    sensors.turn_dial(25)
     sensors.car_arrives_at_gate()
     time.sleep(1.0)
     sensors.scan_nfc(REGISTERED_CARD)
     time.sleep(1.0)
 
-    print("[pi] the car drives through the gate")
+    print("[pi] admitted car enters B1; gate then clears")
+    sensors.car_parks("B1")
+    time.sleep(1.0)
+    sensors.gate_clear()
+    time.sleep(1.0)
+
+    print("[pi] car moves from B1 to assigned spot P1")
+    sensors.car_leaves("B1")
+    sensors.car_parks("P1")
+    time.sleep(1.0)
+
+    print("[pi] customer checks out; car is retrieved to B1")
+    sensors.scan_nfc(REGISTERED_CARD, reader=m.READER_CHECKOUT)
+    time.sleep(1.0)
+    sensors.car_leaves("P1")
+    sensors.car_parks("B1")
+    time.sleep(1.0)
+
+    print("[pi] customer drives out; buffer and gate clear")
+    sensors.car_arrives_at_gate()
+    time.sleep(1.0)
+    sensors.car_leaves("B1")
     sensors.gate_clear()
     time.sleep(1.0)
     print("\n[pi] done.")

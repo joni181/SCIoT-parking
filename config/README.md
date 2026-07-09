@@ -15,3 +15,8 @@ broker (the laptop). Environment variables (`PARKING_BROKER_HOST`,
 
 Static address for now; mDNS auto-discovery deferred. Per-node files
 (`pi.yaml` / `laptop.yaml`) can be added later if node-specific settings appear.
+
+The laptop dashboard has separate local settings: `dashboard_host` (loopback by
+default), `dashboard_port` (8050), and `dashboard_open_browser`. Environment
+overrides are `PARKING_DASHBOARD_HOST`, `PARKING_DASHBOARD_PORT`, and
+`PARKING_DASHBOARD_OPEN_BROWSER` (`0`/`false` disables browser opening).

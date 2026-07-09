@@ -7,3 +7,13 @@ generation and visualization, updated from sensor events.
 **Interface:** [`StateStore`](base.py) (= `OccupancyStore` + `CustomerStore`). Default
 implementation [`InMemoryStore`](memory_store.py); `OccupancyTracker` in
 [`../simulation/`](../simulation/README.md) implements the `OccupancyStore` slice.
+
+`StorageService` pairs the duration dial with the next gate scan and tracks each
+vehicle through arrival request, admission, buffer, parking, retrieval, pickup,
+and departure states. Move commands reserve resources; sensor events confirm
+the actual location before the next planning phase begins. A move completes
+only after its source sensor reports free and its destination reports occupied.
+The entry buffer reservation is released as soon as the car is physically parked,
+so B1 remains available while the customer is shopping. Checkout creates a fresh
+buffer reservation for retrieval, and retrieval confirmation releases the former
+parking-space assignment immediately.

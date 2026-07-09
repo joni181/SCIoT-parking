@@ -9,3 +9,13 @@ broker_port: 1883
 
 # Free-form label for this node (shows up in MQTT client ids / logs).
 node_name: laptop
+
+# Nearest-to-entrance first; shorter expected stays are assigned first.
+parking_spots: [P1, P2, P3]
+buffer_spots: [B1]
+
+# Local operator dashboard. Keep the host on loopback unless remote access is
+# explicitly required; the dashboard has no authentication.
+dashboard_host: 127.0.0.1
+dashboard_port: 8050
+dashboard_open_browser: true
