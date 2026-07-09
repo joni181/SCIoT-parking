@@ -19,7 +19,7 @@ from parking.common.messaging import MqttBus  # noqa: E402
 from parking.planning import ForwardSearchPlanner, PlannerService  # noqa: E402
 from parking.problem_generation import PddlProblemGenerator, ProblemGenerationService  # noqa: E402
 from parking.storage import InMemoryStore, StorageService  # noqa: E402
-from parking.visualization import ConsoleLotView  # noqa: E402
+from parking.visualization import DashboardModel, DashboardView  # noqa: E402
 
 
 def main() -> None:
@@ -30,11 +30,17 @@ def main() -> None:
     planner = PlannerService(bus, ForwardSearchPlanner())
     generator = PddlProblemGenerator(spots=s.parking_spots, buffers=s.buffer_spots)
     problem_generation = ProblemGenerationService(bus, store, generator)
-    components = [
+    dashboard_model = DashboardModel(bus, store, s.parking_spots, s.buffer_spots)
+    dashboard = DashboardView(
+        dashboard_model,
+        host=s.dashboard_host,
+        port=s.dashboard_port,
+        open_browser=s.dashboard_open_browser,
+    )
+    bus_components = [
         StorageService(bus, store),  # keep the store current from bus events
         planner,                     # solve every generated problem
         problem_generation,          # regenerate after stored state changes
-        ConsoleLotView(bus),         # print lot occupancy as it changes
     ]
 
     def trace(topic: str, payload: bytes) -> None:
@@ -42,18 +48,35 @@ def main() -> None:
         print(f"[laptop] {topic:26} {env['type']:14} {env['data']}")
 
     bus.subscribe(topics.ALL, trace)
-    for c in components:
+    for c in bus_components:
         c.start()
+    try:
+        bus.start()
+    except OSError as exc:
+        for c in reversed(bus_components):
+            c.stop()
+        print(
+            "[laptop] could not connect to MQTT broker "
+            f"{s.broker_host}:{s.broker_port}: {exc}\n"
+            "[laptop] start the broker first with: python deploy/broker.py\n"
+            "[laptop] no Raspberry Pi is required, but the broker process is.",
+            file=sys.stderr,
+        )
+        raise SystemExit(1) from exc
 
-    bus.start()
-    print(f"[laptop] connected to broker {s.broker_host}:{s.broker_port}; watching the bus. Ctrl-C to stop.")
+    dashboard.start()
+    print(
+        f"[laptop] connected to broker {s.broker_host}:{s.broker_port}; "
+        f"dashboard: {dashboard.url}. Ctrl-C to stop."
+    )
     try:
         while True:
             time.sleep(1.0)
     except KeyboardInterrupt:
         pass
     finally:
-        for c in components:
+        dashboard.stop()
+        for c in reversed(bus_components):
             c.stop()
         bus.stop()
         print(f"\n[laptop] final occupied spots (from storage): {store.occupied_spots()}")

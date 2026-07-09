@@ -13,6 +13,7 @@ from parking.storage import (
     IN_BUFFER,
     OUTSIDE,
     PARKED,
+    PARKING,
     PICKUP_REQUESTED,
     READY_FOR_PICKUP,
     REJECTED,
@@ -106,15 +107,18 @@ def test_full_arrival_and_checkout_cycle_waits_for_sensor_confirmation():
     bus.publish_message(m.OccupancyEvent(spot_id="B1", occupied=False))
     bus.publish_message(m.OccupancyEvent(spot_id="P1", occupied=True))
     assert _customer(store, "CAR1").status == PARKED
+    assert _customer(store, "CAR1").assigned_buffer == ""
 
     bus.publish_message(m.NfcScanEvent(uid="CAR1", reader=m.READER_CHECKOUT))
     assert _customer(store, "CAR1").status != READY_FOR_PICKUP
+    assert _customer(store, "CAR1").assigned_buffer == "B1"
     assert actuators.vehicle_moves[-1].from_spot == "P1"
     assert actuators.vehicle_moves[-1].to_spot == "B1"
 
     bus.publish_message(m.OccupancyEvent(spot_id="P1", occupied=False))
     bus.publish_message(m.OccupancyEvent(spot_id="B1", occupied=True))
     assert _customer(store, "CAR1").status == EXIT_AUTHORIZED
+    assert _customer(store, "CAR1").assigned_spot == ""
     assert actuators.gate_state == m.GATE_OPEN
 
     bus.publish_message(m.GateMotionEvent(present=True))
@@ -122,6 +126,22 @@ def test_full_arrival_and_checkout_cycle_waits_for_sensor_confirmation():
     bus.publish_message(m.GateMotionEvent(present=False))
     assert _customer(store, "CAR1").status == DEPARTED
     assert actuators.gate_state == m.GATE_CLOSE
+
+
+def test_move_requires_source_free_and_destination_occupied():
+    bus, store, _actuators = _system()
+    _admit(bus)
+    bus.publish_message(m.OccupancyEvent(spot_id="B1", occupied=True))
+
+    # Destination occupancy alone must not confirm a move while the source
+    # sensor still reports the car in the buffer.
+    bus.publish_message(m.OccupancyEvent(spot_id="P1", occupied=True))
+    assert _customer(store, "CAR1").status == PARKING
+    assert store.spot_of_vehicle("CAR1") == "B1"
+
+    bus.publish_message(m.OccupancyEvent(spot_id="B1", occupied=False))
+    assert _customer(store, "CAR1").status == PARKED
+    assert store.spot_of_vehicle("CAR1") == "P1"
 
 
 def test_checkout_during_parking_is_retained_then_retrieved():
@@ -136,6 +156,7 @@ def test_checkout_during_parking_is_retained_then_retrieved():
     bus.publish_message(m.OccupancyEvent(spot_id="P1", occupied=True))
 
     assert _customer(store, "CAR1").status == RETRIEVING
+    assert _customer(store, "CAR1").assigned_buffer == "B1"
     assert [(x.from_spot, x.to_spot) for x in actuators.vehicle_moves] == [
         ("B1", "P1"),
         ("P1", "B1"),
@@ -158,7 +179,10 @@ def test_checkout_before_parking_starts_skips_unnecessary_parking():
 def test_second_checkout_waits_until_first_vehicle_leaves_buffer():
     bus, store, actuators = _system()
     # A is ready in the only buffer; B is parked and checks out.
-    a = Customer(uid="A", vehicle_uid="A", status=EXIT_AUTHORIZED, assigned_buffer="B1")
+    a = Customer(
+        uid="A", vehicle_uid="A", status=EXIT_AUTHORIZED,
+        assigned_buffer="B1", assigned_spot="P1",
+    )
     b = Customer(uid="B", vehicle_uid="B", status=PARKED, assigned_buffer="B1", assigned_spot="P2")
     store.upsert_customer(a)
     store.upsert_customer(b)
@@ -177,6 +201,59 @@ def test_second_checkout_waits_until_first_vehicle_leaves_buffer():
     assert [(x.vehicle_uid, x.from_spot, x.to_spot) for x in actuators.vehicle_moves] == [
         ("B", "P2", "B1")
     ]
+
+
+def test_queued_retrieval_replans_when_gate_clear_completes_departure():
+    bus, store, actuators = _system()
+    a = Customer(
+        uid="A", vehicle_uid="A", status=EXIT_AUTHORIZED,
+        assigned_buffer="B1", assigned_spot="P1",
+    )
+    b = Customer(
+        uid="B", vehicle_uid="B", status=PICKUP_REQUESTED,
+        assigned_buffer="B1", assigned_spot="P2", checkout_requested=True,
+    )
+    store.upsert_customer(a)
+    store.upsert_customer(b)
+    store.set_vehicle_spot("A", "B1")
+    store.set_vehicle_spot("B", "P2")
+    store.set_occupancy("B1", True)
+    store.set_occupancy("P2", True)
+
+    bus.publish_message(m.GateMotionEvent(present=True))
+    bus.publish_message(m.OccupancyEvent(spot_id="B1", occupied=False))
+    assert actuators.vehicle_moves == []
+
+    bus.publish_message(m.GateMotionEvent(present=False))
+
+    assert _customer(store, "A").status == DEPARTED
+    assert [(x.vehicle_uid, x.from_spot, x.to_spot) for x in actuators.vehicle_moves] == [
+        ("B", "P2", "B1")
+    ]
+
+
+def test_parked_vehicle_without_checkout_does_not_mask_pickup_request():
+    store = InMemoryStore()
+    older = Customer(
+        uid="OLDER", vehicle_uid="OLDER", status=PARKED,
+        assigned_buffer="B1", assigned_spot="P1", requested_at=1,
+    )
+    pickup = Customer(
+        uid="PICKUP", vehicle_uid="PICKUP", status=PICKUP_REQUESTED,
+        assigned_buffer="B1", assigned_spot="P2", checkout_requested=True,
+        requested_at=2,
+    )
+    store.upsert_customer(older)
+    store.upsert_customer(pickup)
+    store.set_vehicle_spot("OLDER", "P1")
+    store.set_vehicle_spot("PICKUP", "P2")
+    store.set_occupancy("P1", True)
+    store.set_occupancy("P2", True)
+
+    problem = PddlProblemGenerator().generate(store)
+
+    assert problem.purpose == "retrieve"
+    assert problem.request_uid == "PICKUP"
 
 
 def test_arrival_is_rejected_when_no_spot_is_available():

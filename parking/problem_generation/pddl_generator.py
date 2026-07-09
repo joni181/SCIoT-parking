@@ -72,7 +72,10 @@ class PddlProblemGenerator(ProblemGenerator):
                 init.append(f"(outside {car})")
             elif location in self._spots:
                 init.append(f"(at {car} {location})")
-            elif location in self._buffers:
+            elif location in self._buffers and customer.status not in (READY_FOR_PICKUP, EXIT_AUTHORIZED):
+                # Once pickup/exit is authorized the car owns the buffer and
+                # must never be considered eligible for the `park` action just
+                # to free that buffer for another retrieval.
                 init.append(f"(in-buffer {car} {location})")
             if customer.status == ARRIVAL_REQUESTED:
                 init.append(f"(arrival-requested {car})")
@@ -144,9 +147,15 @@ class PddlProblemGenerator(ProblemGenerator):
         target = oldest((IN_BUFFER,))
         if target:
             return target, "exit" if target.checkout_requested else "park"
-        target = oldest((PICKUP_REQUESTED, PARKED))
-        if target and target.checkout_requested:
-            return target, "retrieve"
+        # Ignore merely parked vehicles when choosing the oldest retrieval.
+        # Otherwise an older car that has not checked out can mask a newer,
+        # genuine pickup request and leave that request unplanned.
+        pickup_requests = [
+            c for c in customers
+            if c.status in (PICKUP_REQUESTED, PARKED) and c.checkout_requested
+        ]
+        if pickup_requests:
+            return min(pickup_requests, key=lambda c: c.requested_at), "retrieve"
         target = oldest((ARRIVAL_REQUESTED,))
         if target:
             return target, "arrival"

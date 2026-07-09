@@ -17,6 +17,10 @@ class ProblemGenerationService:
         for topic in (
             m.OccupancyEvent.TOPIC,
             m.NfcScanEvent.TOPIC,
+            # Gate-clear can complete a departure after the buffer sensor has
+            # already gone free. Replan at that state boundary so a queued
+            # retrieval starts immediately.
+            m.GateMotionEvent.TOPIC,
         ):
             self._bus.subscribe_message(topic, self._on_state_change)
 

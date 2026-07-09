@@ -7,6 +7,7 @@ Three tiers, fast to most-realistic. All run with plain `pytest`.
 | **Unit + scenario** | `tests/test_*.py` | message schemas, the bus, topic matching, and both driving scenarios — all on the in-process `MemoryBus` | instant, stdlib only |
 | **Live transport** | `tests/integration/test_live_mqtt.py` | the same scenarios over a **real broker** with two real `MqttBus` (paho) clients — JSON on the wire, the network, connection setup, subscription de-dup | needs `amqtt` + `paho-mqtt` |
 | **Real processes** | `tests/integration/test_node_processes.py` | launches the actual `deploy/broker.py` + `apps/pi_node.py` + `apps/laptop_node.py` as **three separate OS processes** on a free port — the closest mirror of the laptop+Pi deployment | needs `amqtt` + `paho-mqtt`, slower |
+| **Dashboard demo** | `tests/integration/test_dashboard_demo.py` | serves the real dashboard and runs all three guided scenarios through separate laptop/Pi MQTT clients | needs laptop dependencies |
 
 The integration tier auto-skips if `amqtt`/`paho-mqtt` aren't installed, so the
 core suite always runs with zero dependencies.

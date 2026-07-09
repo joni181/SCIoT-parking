@@ -13,10 +13,15 @@ Pair them with `parking.common.messaging.MemoryBus` for deterministic runs.
 """
 from .controllers import OccupancyTracker, ReactiveGateController
 from .devices import RecordingActuators, SimulatedSensors
+from .guided_demo import GuidedScenarioController, MessageInbox, MqttDemoSystem, SwappableDashboardSource
 
 __all__ = [
     "SimulatedSensors",
     "RecordingActuators",
     "ReactiveGateController",
     "OccupancyTracker",
+    "GuidedScenarioController",
+    "MqttDemoSystem",
+    "SwappableDashboardSource",
+    "MessageInbox",
 ]
