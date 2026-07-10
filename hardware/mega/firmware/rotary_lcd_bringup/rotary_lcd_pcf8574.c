@@ -225,6 +225,7 @@ static void publish_position(int16_t position, bool lcd_ready) {
     uart_puts("\r\n");
 }
 
+#ifndef MEGA_CONTROLLER_LIBRARY
 int main(void) {
     static const int8_t transition[16] = {
         0, -1, 1, 0,
@@ -266,3 +267,4 @@ int main(void) {
         _delay_ms(1);
     }
 }
+#endif

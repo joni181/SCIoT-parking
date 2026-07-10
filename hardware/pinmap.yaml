@@ -26,6 +26,11 @@ controllers:
         direction: unused
         mega_port: PA5
         notes: "The module labels this lead SW, but the attached encoder has no usable mechanical press. Do not depend on it."
+      D6:
+        role: servo_signal
+        direction: timer4_pwm_output
+        mega_port: PH3/OC4A
+        notes: "Modelcraft RS-2: 20ms control period, 1-2ms pulse; position zero maps to 90 degrees and each rotary tick changes 5 degrees."
     power:
       5V: "Use the sensor/module VCC requirement; all controller and sensor grounds must be common."
       GND: common_ground
@@ -39,6 +44,51 @@ controllers:
       sda: mega.D20
       scl: mega.D21
       notes: "Detected by the Mega I2C scanner; current connected display."
+
+  rc522_readers:
+    protocol: auto_detect_spi
+    shared:
+      reset: mega.D8
+    supported_buses:
+      uno_compatible_software_spi:
+        sck: mega.D13
+        miso: mega.D12
+        mosi: mega.D11
+      mega_native_spi:
+        sck: mega.D52
+        miso: mega.D50
+        mosi: mega.D51
+    readers:
+      - id: nfc_reader_1
+        ss: mega.D10
+        expected_connected: true
+      - id: nfc_reader_2
+        ss: mega.D9
+        expected_connected: false
+    power: 3.3V
+    safety: "Level-shift Mega 5V outputs (MOSI, SCK, SS, RST) down to 3.3V before the RC522."
+
+  photoresistor:
+    pin: mega.A15
+    interface: adc15
+    output: raw_0_to_1023
+    wiring: "For a bare LDR: 5V -> LDR -> A15 -> 10kΩ resistor -> GND (reversing the divider reverses the reading direction)."
+
+  ultrasonic_ranger:
+    model: Grove Ultrasonic Ranger
+    pin: mega.D7
+    interface: one_wire_trigger_echo
+    power: 5V
+    ground: mega.GND
+    output: distance_cm
+    notes: "Trigger and echo share the single SIG line; expected range is 2-350cm."
+
+  modelcraft_rs2_servo:
+    pin: mega.D6
+    interface: timer4_pwm
+    control: "20ms period; 1000-2000us pulse maps 0-180 degrees"
+    input: rotary_encoder.position
+    power: "Separate regulated 4.8-6V supply; connect its GND to Mega GND. Do not power it from the Mega USB 5V rail."
 
   legacy_grove_lcd_rgb_v4:
     model: Grove LCD RGB Backlight v4.0
@@ -66,6 +116,12 @@ devices:
       active_scl: mega.D21
       vcc: mega.5V
       ground: mega.GND
+  modelcraft_rs2_servo:
+    controller: mega_adk
+    connections:
+      signal: mega.D6
+      power: external_4.8_to_6V
+      ground: common_with_mega.GND
 
 reserved:
   mega:
