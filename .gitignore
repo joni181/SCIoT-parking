@@ -10,3 +10,6 @@ __pycache__/
 *.egg-info/
 .venv/
 venv/
+
+# Generated AVR firmware artefacts (ELF and HEX files from `make`)
+hardware/mega/firmware/**/build/
