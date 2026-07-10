@@ -11,6 +11,8 @@ from typing import Protocol, runtime_checkable
 from .base import View
 from .model import DashboardModel, DashboardSnapshot, SpotSnapshot
 
+_LOGO = "/assets/lidl-logo.svg"
+
 
 @dataclass(frozen=True)
 class ScenarioOption:
@@ -119,15 +121,22 @@ def create_dashboard_app(source: DashboardSource, demo_controller: DemoControlle
         ) from exc
 
     assets = Path(__file__).with_name("assets")
-    app = Dash(__name__, assets_folder=str(assets), title="SCIoT Parking Control")
+    app = Dash(__name__, assets_folder=str(assets), title="LIDL Parking Control")
     demo_panel = _demo_layout(html, dcc, demo_controller) if demo_controller else None
+
+    def heading(title, tag):
+        return html.Div(className="panel-heading", children=[html.H2(title), html.Span(tag)])
+
     app.layout = html.Div(className="shell", children=[
         dcc.Interval(id="refresh", interval=500, n_intervals=0),
         html.Header(className="topbar", children=[
-            html.Div([
-                html.P("SCIoT · GROUP 04", className="eyebrow"),
-                html.H1("Parking control center"),
-                html.P("Live human instructions and sensor-confirmed parking state", className="subtitle"),
+            html.Div(className="brand", children=[
+                html.Img(src=_LOGO, className="brand-logo", alt="LIDL"),
+                html.Div([
+                    html.P("LIDL · SCIoT · GROUP 04", className="eyebrow"),
+                    html.H1("LIDL Parking Control Center"),
+                    html.P("Lidl lohnt sich!", className="subtitle"),
+                ]),
             ]),
             html.Div(className="health-row", children=[
                 html.Span(id="connection-badge"),
@@ -138,11 +147,11 @@ def create_dashboard_app(source: DashboardSource, demo_controller: DemoControlle
         html.Section(id="operator-instruction", className="instruction-panel"),
         html.Main(className="dashboard-grid", children=[
             html.Section(className="panel lot-panel", children=[
-                html.Div(className="panel-heading", children=[html.H2("Parking lot"), html.Span("Sensor-confirmed")]),
+                heading("LIDL parking lot", "Sensor-confirmed"),
                 html.Div(id="lot-map"),
             ]),
             html.Section(className="panel assignments-panel", children=[
-                html.Div(className="panel-heading", children=[html.H2("Assignments"), html.Span("All customers")]),
+                heading("Assignments", "All customers"),
                 html.Div(id="assignments-table", className="table-wrap"),
             ]),
         ]),
@@ -150,15 +159,20 @@ def create_dashboard_app(source: DashboardSource, demo_controller: DemoControlle
             html.Summary("Technical diagnostics"),
             html.Div(className="diagnostics-grid", children=[
                 html.Section(className="panel plan-panel", children=[
-                    html.Div(className="panel-heading", children=[html.H2("Latest plan"), html.Span("Issued actions")]),
+                    heading("Latest plan", "Issued actions"),
                     html.Div(id="admission-result"),
                     html.Div(id="plan-view"),
                 ]),
                 html.Section(className="panel activity-panel", children=[
-                    html.Div(className="panel-heading", children=[html.H2("Recent activity"), html.Span("Newest first")]),
+                    heading("Recent activity", "Newest first"),
                     html.Div(id="activity-feed"),
                 ]),
             ]),
+        ]),
+        html.Footer(className="lidl-footer", children=[
+            html.Img(src=_LOGO, alt="LIDL"),
+            html.Span("LIDL Parking ↝ Park smart. Lidl lohnt sich!"),
+            html.Img(src=_LOGO, alt="LIDL"),
         ]),
     ])
 
@@ -235,7 +249,7 @@ def _demo_layout(html, dcc, controller: DemoController):
     default = options[0]["value"] if options else None
     return html.Section(className="demo-panel", children=[
         html.Div([
-            html.P("STANDALONE SIMULATION", className="eyebrow"),
+            html.P("LIDL STANDALONE SIMULATION", className="eyebrow"),
             html.Div(id="scenario-status"),
             html.Div(id="demo-action-result", className="form-error"),
         ]),
