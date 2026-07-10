@@ -1,0 +1,73 @@
+# Canonical physical wiring map.  Update this file before attaching hardware.
+version: 1
+
+controllers:
+  mega_adk:
+    board: Arduino Mega ADK R3 (ATmega2560)
+    transport:
+      preferred: /dev/serial/by-id/usb-Arduino__www.arduino.cc__Arduino_Mega_ADK_6493633393635170A1D2-if00
+      fallback: /dev/ttyACM0
+      baud: 9600
+    pins:
+      D22:
+        role: status_led
+        direction: output
+        notes: "External LED; used as a rotary/LCD bring-up heartbeat."
+      D23:
+        role: rotary_clock
+        direction: input_pullup
+        mega_port: PA1
+      D25:
+        role: rotary_dt
+        direction: input_pullup
+        mega_port: PA3
+      D27:
+        role: rotary_switch_optional
+        direction: unused
+        mega_port: PA5
+        notes: "The module labels this lead SW, but the attached encoder has no usable mechanical press. Do not depend on it."
+    power:
+      5V: "Use the sensor/module VCC requirement; all controller and sensor grounds must be common."
+      GND: common_ground
+
+  lcd_i2c_pcf8574:
+    model: "HD44780-compatible character LCD with PCF8574 I2C backpack"
+    detected_i2c_address: 0x27
+    protocol: pcf8574_4bit
+    active:
+      mode: hardware_i2c
+      sda: mega.D20
+      scl: mega.D21
+      notes: "Detected by the Mega I2C scanner; current connected display."
+
+  legacy_grove_lcd_rgb_v4:
+    model: Grove LCD RGB Backlight v4.0
+    text_i2c_address: 0x3E
+    rgb_i2c_address: 0x62
+    legacy_wiring:
+      mode: software_i2c
+      sda: mega.A0
+      scl: mega.A1
+      notes: "Historical only; A0/A1 are not native Mega I2C pins."
+
+devices:
+  rotary_encoder:
+    controller: mega_adk
+    connections:
+      clock: mega.D23
+      dt: mega.D25
+      switch: mega.D27 # optional; unused by the current no-click encoder
+      plus: mega.5V
+      ground: mega.GND
+  lcd_i2c_pcf8574:
+    controller: mega_adk
+    connections:
+      active_sda: mega.D20
+      active_scl: mega.D21
+      vcc: mega.5V
+      ground: mega.GND
+
+reserved:
+  mega:
+    - "Keep D20/D21 reserved for native I2C devices."
+    - "Allocate new digital devices by updating this map; do not embed pin numbers in parking/ modules."
