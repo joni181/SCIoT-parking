@@ -162,6 +162,10 @@ def create_dashboard_app(source: DashboardSource, demo_controller: DemoControlle
                     html.Div(className="panel-heading", children=[html.H2("Ultrasonic ranger"), html.Span("HC-SR04P · gate")]),
                     html.Div(id="distance-reading"),
                 ]),
+                html.Section(className="panel sensor-panel", children=[
+                    html.Div(className="panel-heading", children=[html.H2("NFC readers"), html.Span("RC522 · gate / checkout")]),
+                    html.Div(id="nfc-readings"),
+                ]),
             ]),
         ]),
     ])
@@ -172,7 +176,7 @@ def create_dashboard_app(source: DashboardSource, demo_controller: DemoControlle
         Output("operator-instruction", "className"), Output("lot-map", "children"),
         Output("assignments-table", "children"), Output("admission-result", "children"),
         Output("plan-view", "children"), Output("activity-feed", "children"),
-        Output("distance-reading", "children"),
+        Output("distance-reading", "children"), Output("nfc-readings", "children"),
     ]
     if demo_controller:
         outputs.extend([
@@ -196,6 +200,7 @@ def create_dashboard_app(source: DashboardSource, demo_controller: DemoControlle
             _plan(html, snapshot),
             _activity(html, snapshot),
             _distance(html, snapshot),
+            _nfc(html, snapshot),
         ]
         if demo_controller:
             status = demo_controller.status()
@@ -384,6 +389,20 @@ def _distance(html, snapshot: DashboardSnapshot):
         return html.Div("Out of range / no reading yet", className="empty-state")
     return html.Div(className="distance-value", children=[
         html.Strong(f"{value:.1f}"), html.Span("cm"),
+    ])
+
+
+def _nfc(html, snapshot: DashboardSnapshot):
+    scans = snapshot.latest_nfc_scans
+    if not scans:
+        return html.Div("No card scanned yet", className="empty-state")
+    return html.Div(className="nfc-scan-list", children=[
+        html.Div(className="nfc-scan-item", children=[
+            html.Span(reader.title(), className="nfc-scan-reader"),
+            html.Strong(scan.uid),
+            html.Time(datetime.fromtimestamp(scan.ts).strftime("%H:%M:%S")),
+        ])
+        for reader, scan in sorted(scans.items())
     ])
 
 

@@ -525,7 +525,9 @@ int main(void) {
             }
         }
 
-        if (++ultrasonic_timer >= 250) {
+        /* The main loop's baseline period is ~1ms (the trailing _delay_ms(1)
+         * below), so 1000 iterations is roughly one reading per second. */
+        if (++ultrasonic_timer >= 1000) {
             ultrasonic_timer = 0;
             publish_distance(ultrasonic_measure_cm());
         }

@@ -106,6 +106,12 @@ progress { grid-column: 1 / -1; width: 100%; height: 5px; border: 0; }
 .distance-value { display: flex; align-items: baseline; gap: 6px; padding: 34px 20px; justify-content: center; }
 .distance-value strong { font-size: 40px; line-height: 1; color: var(--blue); }
 .distance-value span { color: var(--muted); font-size: 13px; }
+.nfc-scan-list { padding: 14px 20px; display: flex; flex-direction: column; gap: 10px; }
+.nfc-scan-item { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; padding: 9px 0; border-top: 1px solid var(--line); }
+.nfc-scan-item:first-child { border-top: none; }
+.nfc-scan-reader { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
+.nfc-scan-item strong { font-family: monospace; font-size: 15px; color: var(--blue); }
+.nfc-scan-item time { color: var(--muted); font-size: 11px; }
 
 @media (max-width: 1040px) { .dashboard-grid,.diagnostics-grid { grid-template-columns: 1fr; }.instruction-content { grid-template-columns: 1fr; gap: 16px; }.instruction-route { width: fit-content; }.kpi-grid { grid-template-columns: repeat(2,1fr); }.demo-panel { grid-template-columns: 1fr; } }
 @media (max-width: 700px) { .shell { width: min(100% - 20px, 1480px); padding-top: 20px; }.topbar { flex-direction: column; }.health-row { justify-content: flex-start; }.kpi-grid { grid-template-columns: 1fr 1fr; }.scenario-controls { grid-template-columns: 1fr 1fr 1fr; }.scenario-controls .scenario-select { grid-column: 1 / -1; }.parking-row { grid-template-columns: 1fr 1fr; }.instruction-content { min-height: 0; padding: 20px; }.instruction-route { width: 100%; justify-content: center; } }

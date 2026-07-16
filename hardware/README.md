@@ -123,8 +123,8 @@ than relying only on wire colours.
 
 ## Ultrasonic ranger (HC-SR04P)
 
-`mega_controller.c` polls the HC-SR04P every 250 iterations of the main loop and
-emits its reading as a serial line, e.g.:
+`mega_controller.c` polls the HC-SR04P about once a second (every 1000
+iterations of the ~1ms main loop) and emits its reading as a serial line, e.g.:
 
 ```text
 DISTANCE sensor=hc_sr04p_d7_d24 cm=42

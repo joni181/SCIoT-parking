@@ -94,6 +94,13 @@ class ActivitySnapshot:
 
 
 @dataclass(frozen=True)
+class NfcScanSnapshot:
+    uid: str = ""
+    reader: str = ""
+    ts: float = 0.0
+
+
+@dataclass(frozen=True)
 class ConfirmationSnapshot:
     label: str
     confirmed: bool
@@ -126,6 +133,7 @@ class DashboardSnapshot:
     latest_admission: AdmissionSnapshot
     activity: tuple[ActivitySnapshot, ...]
     latest_distance_cm: float | None
+    latest_nfc_scans: dict[str, NfcScanSnapshot]
     version: int
 
 
@@ -156,7 +164,7 @@ class DashboardModel:
         self._latest_admission = AdmissionSnapshot()
         self._moves: dict[str, m.VehicleMoveCommand] = {}
         self._latest_distance_cm: float | None = None
-        self._latest_distance_cm: float | None = None
+        self._latest_nfc_scans: dict[str, NfcScanSnapshot] = {}
 
     def start(self) -> None:
         with self._lock:
@@ -200,6 +208,7 @@ class DashboardModel:
                 latest_admission=self._latest_admission,
                 activity=tuple(reversed(self._activity)),
                 latest_distance_cm=self._latest_distance_cm,
+                latest_nfc_scans=dict(self._latest_nfc_scans),
                 version=self._version,
             )
 
@@ -422,6 +431,10 @@ class DashboardModel:
                 self._moves[message.vehicle_uid] = message
             elif isinstance(message, m.DistanceEvent):
                 self._latest_distance_cm = message.distance_cm
+            elif isinstance(message, m.NfcScanEvent):
+                self._latest_nfc_scans[message.reader] = NfcScanSnapshot(
+                    uid=message.uid, reader=message.reader, ts=message.ts
+                )
 
             self._activity.append(ActivitySnapshot(
                 timestamp=message.ts,
