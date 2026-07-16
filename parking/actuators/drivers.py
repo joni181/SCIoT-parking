@@ -11,29 +11,38 @@ gate actuator is a servo motor.
 """
 from __future__ import annotations
 
+from typing import Optional
+
 from ..common import models as m
 from ..common.messaging import MessageBus
+from ..mega_link import MegaLink
 from .base import Actuator
 
 
 class GateServo(Actuator):
-    """Servo motor at the gate. Consumes `GateCommand` (open / close)."""
+    """Servo motor at the gate. Consumes `GateCommand` (open / close).
 
-    def __init__(self, bus: MessageBus, source: str = "pi/actuator/gate") -> None:
+    Drives the Mega's servo by sending "GATE OPEN" / "GATE CLOSE" over the
+    shared `MegaLink` (see `hardware/mega/firmware/rotary_lcd_bringup/mega_controller.c`).
+    With no `link` (simulated/no-hardware runs) this is a no-op, matching the
+    previous skeleton behavior.
+    """
+
+    def __init__(self, bus: MessageBus, link: Optional[MegaLink] = None, source: str = "pi/actuator/gate") -> None:
         self._bus = bus
+        self._link = link
         self._source = source
 
     def start(self) -> None:
         self._bus.subscribe_message(m.GateCommand.TOPIC, self._on_command)
 
     def stop(self) -> None:
-        # TODO: release the servo/GPIO resources.
         ...
 
     def _on_command(self, msg: m.GateCommand) -> None:
-        # TODO: move the servo to its open or closed angle based on msg.action
-        #       (m.GATE_OPEN / m.GATE_CLOSE).
-        ...
+        if self._link is None:
+            return
+        self._link.send("GATE OPEN" if msg.action == m.GATE_OPEN else "GATE CLOSE")
 
 
 class BufferLed(Actuator):

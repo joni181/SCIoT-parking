@@ -9,15 +9,20 @@ exactly where that code drops in.
 Until the hardware code is filled in these are inert: constructing one wires
 nothing and `start()`/`stop()` are safe no-ops, so importing the package and
 running the test suite never touches the GPIO. Each implements `Sensor`.
+
+`DistanceSensor` and `NfcReader` read the Mega over its shared `MegaLink`
+(see `parking.mega_link`) rather than opening their own serial port, since
+both the distance ranger and the NFC readers are multiplexed onto the same
+USB-serial connection.
 """
 from __future__ import annotations
 
 import re
-import threading
 from typing import Optional
 
 from ..common import models as m
 from ..common.messaging import MessageBus
+from ..mega_link import MegaLink
 from .base import Sensor
 
 
@@ -71,23 +76,45 @@ class GateMotionSensor(Sensor):
         self._bus.publish_message(m.GateMotionEvent(present=present, source=self._source))
 
 
+_NFC_LINE = re.compile(r"^NFC reader=(?P<reader>\d) uid=(?P<uid>[0-9A-Fa-f]+)$")
+
+
 class NfcReader(Sensor):
     """RC522 NFC reader at the gate or checkout -> `NfcScanEvent`.
 
-    Raw read: see experiments/mfrc522.py / experiments/test-rfid.py.
+    The Mega firmware (`hardware/mega/firmware/rotary_lcd_bringup/mega_controller.c`)
+    prints `NFC reader=<1|2> uid=<hex>` whenever a reader sees a (new) card.
+    Reader 1 is the entrance/gate reader, reader 2 is the optional checkout
+    reader; `firmware_reader` picks which one this instance listens for.
     """
 
-    def __init__(self, bus: MessageBus, reader: str = m.READER_GATE, source: str = "pi/sensor/nfc") -> None:
+    def __init__(
+        self,
+        bus: MessageBus,
+        link: Optional[MegaLink] = None,
+        reader: str = m.READER_GATE,
+        firmware_reader: int = 1,
+        source: str = "pi/sensor/nfc",
+    ) -> None:
         self._bus = bus
+        self._link = link
         self._reader = reader
+        self._firmware_reader = firmware_reader
         self._source = f"{source}/{reader}"
 
     def start(self) -> None:
-        # TODO: loop on RC522 reads; on a successful scan call self._publish(uid).
-        ...
+        if self._link is not None:
+            self._link.add_listener(self._on_line)
 
     def stop(self) -> None:
-        ...
+        if self._link is not None:
+            self._link.remove_listener(self._on_line)
+
+    def _on_line(self, line: str) -> None:
+        match = _NFC_LINE.match(line)
+        if not match or int(match.group("reader")) != self._firmware_reader:
+            return
+        self._publish(match.group("uid"))
 
     def _publish(self, uid: str) -> None:
         self._bus.publish_message(m.NfcScanEvent(uid=uid, reader=self._reader, source=self._source))
@@ -126,58 +153,28 @@ class DistanceSensor(Sensor):
     The Mega firmware (`hardware/mega/firmware/rotary_lcd_bringup/mega_controller.c`)
     prints one line per reading over its USB-serial connection, e.g.
     `DISTANCE sensor=hc_sr04p_d7_d24 cm=42` or `... status=out-of-range`. This
-    driver owns that serial port, parses those lines on a background thread, and
-    republishes each reading as a `DistanceEvent` (`distance_cm=None` when out of
-    range).
-
-    Requires `pyserial` (only listed in `requirements/pi.txt`); the import is
-    deferred to `start()` so importing this module elsewhere stays hardware-free.
+    driver listens on the shared `MegaLink`, parses those lines, and
+    republishes each reading as a `DistanceEvent` (`distance_cm=None` when out
+    of range).
     """
 
-    def __init__(
-        self,
-        bus: MessageBus,
-        port: str = "/dev/ttyACM0",
-        baudrate: int = 9600,
-        source: str = "pi/sensor/distance",
-    ) -> None:
+    def __init__(self, bus: MessageBus, link: MegaLink, source: str = "pi/sensor/distance") -> None:
         self._bus = bus
-        self._port = port
-        self._baudrate = baudrate
+        self._link = link
         self._source = source
-        self._serial = None
-        self._thread: Optional[threading.Thread] = None
-        self._stop_event = threading.Event()
 
     def start(self) -> None:
-        if self._thread is not None and self._thread.is_alive():
-            return
-        import serial  # deferred: only required on the Pi with real hardware
-
-        self._stop_event.clear()
-        self._serial = serial.Serial(self._port, self._baudrate, timeout=1)
-        self._thread = threading.Thread(target=self._run, name="distance-sensor", daemon=True)
-        self._thread.start()
+        self._link.add_listener(self._on_line)
 
     def stop(self) -> None:
-        self._stop_event.set()
-        if self._thread is not None:
-            self._thread.join(timeout=2.0)
-            self._thread = None
-        if self._serial is not None:
-            self._serial.close()
-            self._serial = None
+        self._link.remove_listener(self._on_line)
 
-    def _run(self) -> None:
-        while not self._stop_event.is_set():
-            raw = self._serial.readline().decode("utf-8", errors="replace").strip()
-            if not raw:
-                continue
-            match = _DISTANCE_LINE.match(raw)
-            if not match:
-                continue
-            cm = match.group("cm")
-            self._publish(float(cm) if cm is not None else None)
+    def _on_line(self, line: str) -> None:
+        match = _DISTANCE_LINE.match(line)
+        if not match:
+            return
+        cm = match.group("cm")
+        self._publish(float(cm) if cm is not None else None)
 
     def _publish(self, distance_cm: Optional[float]) -> None:
         self._bus.publish_message(m.DistanceEvent(distance_cm=distance_cm, source=self._source))

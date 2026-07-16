@@ -6,11 +6,14 @@
  * - RC522 reader 2: shared SCK/MISO/MOSI/RST, SS D9 (optional)
  * - Photoresistor: A15 / ADC15
  * - HC-SR04P ultrasonic ranger: Trig D7/PH4, Echo D24/PA2
- * - Modelcraft RS-2 servo: D6/PH3 PWM signal
+ * - Modelcraft RS-2 servo: D6/PH3 PWM signal, commanded over serial with
+ *   "GATE OPEN" / "GATE CLOSE" lines (closed on boot; not tied to the rotary)
  *
  * The controller probes both the supplied Uno/Nano D11-D13 wiring and the
  * Mega's native D50-D52 SPI wiring, then uses the one where reader 1 responds.
  */
+
+#include <string.h>
 
 #define MEGA_CONTROLLER_LIBRARY
 #include "rotary_lcd_pcf8574.c"
@@ -50,12 +53,13 @@
 #define ULTRASONIC_ECHO PA2 /* Arduino D24 */
 #define SERVO_PIN PH3 /* Arduino D6 / Timer4 output compare A */
 
-#define SERVO_MIN_DEGREES 0
 #define SERVO_MAX_DEGREES 180
-#define SERVO_CENTER_DEGREES 90
-#define SERVO_DEGREES_PER_ROTARY_TICK 5
+#define SERVO_CLOSED_DEGREES 0
+#define SERVO_OPEN_DEGREES 90
 #define SERVO_MIN_PULSE_US 1000
 #define SERVO_MAX_PULSE_US 2000
+
+#define GATE_LINE_MAX 16
 
 typedef struct {
     bool online;
@@ -369,35 +373,65 @@ static void servo_init(void) {
     OCR4A = SERVO_MIN_PULSE_US * 2;
 }
 
-static uint8_t servo_angle_from_position(int16_t position) {
-    int16_t angle = SERVO_CENTER_DEGREES +
-        (position * SERVO_DEGREES_PER_ROTARY_TICK);
-    if (angle < SERVO_MIN_DEGREES) {
-        return SERVO_MIN_DEGREES;
-    }
-    if (angle > SERVO_MAX_DEGREES) {
-        return SERVO_MAX_DEGREES;
-    }
-    return (uint8_t)angle;
-}
-
-static void servo_set_for_position(int16_t position) {
-    const uint8_t angle = servo_angle_from_position(position);
+/*
+ * The gate servo is commanded, not tied to the rotary encoder: the Pi sends
+ * "GATE OPEN" / "GATE CLOSE" lines over serial (see gate_poll_uart below),
+ * and this is the only thing that moves it.
+ */
+static void gate_set(bool open) {
+    const uint8_t angle = open ? SERVO_OPEN_DEGREES : SERVO_CLOSED_DEGREES;
     const uint16_t pulse_us = SERVO_MIN_PULSE_US +
         (((uint32_t)angle * (SERVO_MAX_PULSE_US - SERVO_MIN_PULSE_US)) /
          SERVO_MAX_DEGREES);
     OCR4A = pulse_us * 2;
 
-    uart_puts("SERVO pin=D6 angle=");
+    uart_puts("GATE state=");
+    uart_puts(open ? "open" : "closed");
+    uart_puts(" angle=");
     uart_put_i16(angle);
     uart_puts(" pulse_us=");
     uart_put_i16(pulse_us);
     uart_puts("\r\n");
 }
 
-static void controller_publish_position(int16_t position, bool lcd_ready) {
-    publish_position(position, lcd_ready);
-    servo_set_for_position(position);
+static bool uart_try_getc(char *out) {
+    if (!(UCSR0A & _BV(RXC0))) {
+        return false;
+    }
+    *out = (char)UDR0;
+    return true;
+}
+
+static void gate_handle_line(const char *line) {
+    if (strcmp(line, "GATE OPEN") == 0) {
+        gate_set(true);
+    } else if (strcmp(line, "GATE CLOSE") == 0) {
+        gate_set(false);
+    }
+}
+
+/* Non-blocking: drains whatever the Pi has sent so far, one line at a time. */
+static void gate_poll_uart(void) {
+    static char line[GATE_LINE_MAX];
+    static uint8_t length = 0;
+
+    char c;
+    while (uart_try_getc(&c)) {
+        if (c == '\r') {
+            continue;
+        }
+        if (c == '\n') {
+            line[length] = '\0';
+            gate_handle_line(line);
+            length = 0;
+            continue;
+        }
+        if (length < GATE_LINE_MAX - 1) {
+            line[length++] = c;
+        } else {
+            length = 0; /* overflow: drop the line and resync */
+        }
+    }
 }
 
 int main(void) {
@@ -410,6 +444,7 @@ int main(void) {
     NfcReaderState readers[NFC_READER_COUNT] = {0};
 
     uart_init();
+    UCSR0B |= _BV(RXEN0); /* also receive, for "GATE OPEN"/"GATE CLOSE" commands */
     DDRA |= _BV(LED_BIT);
     DDRA &= (uint8_t)~(_BV(ROTARY_CLK) | _BV(ROTARY_DT));
     PORTA |= _BV(ROTARY_CLK) | _BV(ROTARY_DT);
@@ -442,10 +477,13 @@ int main(void) {
 
     uart_puts("READY controller=mega lcd=");
     uart_puts(lcd_ready ? "pcf8574-ready" : "not-found");
-    uart_puts(" rotary=D23,D25 light=A15 ultrasonic=D7trig,D24echo servo=D6\r\n");
-    controller_publish_position(position, lcd_ready);
+    uart_puts(" rotary=D23,D25 light=A15 ultrasonic=D7trig,D24echo servo=D6(GATE cmd)\r\n");
+    publish_position(position, lcd_ready);
+    gate_set(false); /* closed on boot */
 
     for (;;) {
+        gate_poll_uart();
+
         const uint8_t current = rotary_sample();
         if (current != previous) {
             accumulator += transition[(previous << 2) | current];
@@ -453,11 +491,11 @@ int main(void) {
             if (accumulator >= 4) {
                 ++position;
                 accumulator = 0;
-                controller_publish_position(position, lcd_ready);
+                publish_position(position, lcd_ready);
             } else if (accumulator <= -4) {
                 --position;
                 accumulator = 0;
-                controller_publish_position(position, lcd_ready);
+                publish_position(position, lcd_ready);
             }
         }
 
