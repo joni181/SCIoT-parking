@@ -18,6 +18,7 @@ instead (see `parking/dispatching/gate_safety.py`).
     python apps/pi_node.py
     PARKING_BROKER_HOST=192.168.0.10 python apps/pi_node.py     # broker on the laptop
     PARKING_SENSORS=hardware python apps/pi_node.py             # on the real Pi
+    PARKING_MEGA_PORT=/dev/ttyACM1 PARKING_SENSORS=hardware python apps/pi_node.py  # override the port
 """
 from __future__ import annotations
 
@@ -133,7 +134,8 @@ def main() -> None:
     bus = MqttBus(host=s.broker_host, port=s.broker_port, client_id="pi")
 
     hardware_mode = os.environ.get("PARKING_SENSORS", "sim") == "hardware"
-    link = MegaLink() if hardware_mode else None
+    mega_port = os.environ.get("PARKING_MEGA_PORT")
+    link = (MegaLink(port=mega_port) if mega_port else MegaLink()) if hardware_mode else None
 
     components = pi_components(bus, link=link)
     # Echo gate commands so the gate's behaviour is visible even with no motor.
