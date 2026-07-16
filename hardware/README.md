@@ -17,6 +17,43 @@ When a device is added, first update `pinmap.yaml`, add a focused bring-up progr
 here, and only then add its application-facing driver under `parking/sensors` or
 `parking/actuators`.
 
+## Pull and run the latest changes
+
+Do this on both the Pi (firmware + `apps/pi_node.py`) and the laptop
+(`apps/laptop_node.py`) whenever the repo has moved:
+
+```bash
+git checkout feature/hardware-compatibility
+git pull origin feature/hardware-compatibility
+```
+
+**On the Pi**, if `hardware/mega/firmware/rotary_lcd_bringup/mega_controller.c`
+changed, reflash the Mega before running anything against it:
+
+```bash
+cd hardware/mega/firmware/rotary_lcd_bringup
+make TARGET=mega_controller
+make upload TARGET=mega_controller PORT=/dev/ttyACM0
+```
+
+Then run the node that changed:
+
+```bash
+pip install -r requirements/pi.txt         # only if requirements changed
+PARKING_SENSORS=hardware python apps/pi_node.py
+```
+
+**On the laptop**, in two terminals:
+
+```bash
+pip install -r requirements/laptop.txt     # only if requirements changed
+python deploy/broker.py                    # 1) keep running
+python apps/laptop_node.py                 # 2) dashboard at http://127.0.0.1:8050
+```
+
+See the root [README.md](../README.md#getting-started) for the full
+first-time setup (config, no-hardware dry run, tests).
+
 ## Current rotary + LCD bring-up
 
 The Mega firmware reads the incremental rotary encoder, writes its signed position

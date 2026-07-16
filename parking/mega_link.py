@@ -13,6 +13,7 @@ so importing this module elsewhere stays hardware-free.
 from __future__ import annotations
 
 import threading
+import time
 from typing import Callable, List, Optional
 
 
@@ -61,9 +62,21 @@ class MegaLink:
             self._serial.write((line + "\r\n").encode("utf-8"))
 
     def _run(self) -> None:
+        # Both driver and I/O errors are isolated here: every listener shares this
+        # one thread (DistanceSensor + NfcReader alike), so an unhandled exception
+        # from a bad line or a transient serial hiccup would otherwise silently
+        # kill line dispatch for all of them at once, not just the one at fault.
         while not self._stop_event.is_set():
-            raw = self._serial.readline().decode("utf-8", errors="replace").strip()
+            try:
+                raw = self._serial.readline().decode("utf-8", errors="replace").strip()
+            except Exception as exc:
+                print(f"[mega-link] serial read failed, retrying: {exc!r}")
+                time.sleep(0.5)
+                continue
             if not raw:
                 continue
             for listener in self._listeners:
-                listener(raw)
+                try:
+                    listener(raw)
+                except Exception as exc:
+                    print(f"[mega-link] listener failed on line {raw!r}: {exc!r}")
