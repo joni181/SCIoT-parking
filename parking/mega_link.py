@@ -17,10 +17,19 @@ import time
 from typing import Callable, List, Optional
 
 
+#: Stable path keyed to the board's USB serial number (from `hardware/pinmap.yaml`),
+#: so it doesn't change when the Mega re-enumerates as a different /dev/ttyACM<N>
+#: on every reset/reflash/replug.
+DEFAULT_PORT = (
+    "/dev/serial/by-id/"
+    "usb-Arduino__www.arduino.cc__Arduino_Mega_ADK_6493633393635170A1D2-if00"
+)
+
+
 class MegaLink:
     """Owns the Mega's serial port: one reader thread, thread-safe writes."""
 
-    def __init__(self, port: str = "/dev/ttyACM0", baudrate: int = 9600) -> None:
+    def __init__(self, port: str = DEFAULT_PORT, baudrate: int = 9600) -> None:
         self._port = port
         self._baudrate = baudrate
         self._serial = None

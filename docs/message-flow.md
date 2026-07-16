@@ -55,10 +55,10 @@ Each topic carries one message type (in
 | Topic | Published by | Consumed by | Message |
 |---|---|---|---|
 | `parking/events/occupancy` | sensors (light) | storage, viz, problem_gen | `OccupancyEvent` |
-| `parking/events/gate_motion` | sensors (motion) | control | `GateMotionEvent` |
+| `parking/events/gate_motion` | sensors (motion, not yet wired up) | storage, problem_gen | `GateMotionEvent` |
 | `parking/events/nfc_scan` | sensors (NFC) | control, storage | `NfcScanEvent` |
 | `parking/events/duration_dial` | sensors (rotary) | storage, problem_gen | `DurationDialEvent` |
-| `parking/events/distance` | sensors (ultrasonic) | viz | `DistanceEvent` |
+| `parking/events/distance` | sensors (ultrasonic) | viz, control (gate auto-close) | `DistanceEvent` |
 | `parking/commands/gate` | control / dispatcher | actuators (gate) | `GateCommand` |
 | `parking/commands/buffer_led` | control / dispatcher | actuators (LED) | `BufferLedCommand` |
 | `parking/commands/vehicle_move` | dispatcher | actuators (vehicle) | `VehicleMoveCommand` |

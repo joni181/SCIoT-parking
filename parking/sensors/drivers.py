@@ -55,27 +55,6 @@ class OccupancySensor(Sensor):
         )
 
 
-class GateMotionSensor(Sensor):
-    """Motion sensor at the gate -> `GateMotionEvent`.
-
-    Raw Grove read: see experiments/motion-sensor-grove-pi.py.
-    """
-
-    def __init__(self, bus: MessageBus, source: str = "pi/sensor/motion/gate") -> None:
-        self._bus = bus
-        self._source = source
-
-    def start(self) -> None:
-        # TODO: poll/interrupt the Grove motion pin; call self._publish(present).
-        ...
-
-    def stop(self) -> None:
-        ...
-
-    def _publish(self, present: bool) -> None:
-        self._bus.publish_message(m.GateMotionEvent(present=present, source=self._source))
-
-
 _NFC_LINE = re.compile(r"^NFC reader=(?P<reader>\d) uid=(?P<uid>[0-9A-Fa-f]+)$")
 
 
