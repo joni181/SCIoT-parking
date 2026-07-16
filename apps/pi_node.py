@@ -8,7 +8,8 @@ Sensors are the one piece that needs real hardware. By default this runs the
 hardware-free `SimulatedSensors` and plays a short scripted scenario, so you can
 run it with no hardware and watch the laptop react over the broker.
 `PARKING_SENSORS=hardware` selects the Grove/RC522 driver skeletons, which remain
-inert until their `TODO` hardware loops are implemented.
+inert until their `TODO` hardware loops are implemented, plus the live
+`DistanceSensor`, which reads the Mega's serial `DISTANCE ...` lines for real.
 
     python apps/pi_node.py
     PARKING_BROKER_HOST=192.168.0.10 python apps/pi_node.py     # broker on the laptop
@@ -27,7 +28,7 @@ from parking.common import models as m  # noqa: E402
 from parking.common.messaging import MqttBus  # noqa: E402
 from parking.actuators import BufferLed, GateServo, VehicleMover  # noqa: E402
 from parking.dispatching import GateSafetyController, PlanDispatcher  # noqa: E402
-from parking.sensors import DurationDial, GateMotionSensor, NfcReader, OccupancySensor  # noqa: E402
+from parking.sensors import DistanceSensor, DurationDial, GateMotionSensor, NfcReader, OccupancySensor  # noqa: E402
 from parking.simulation import SimulatedSensors  # noqa: E402
 
 REGISTERED_CARD = "AB12CD34"
@@ -95,10 +96,14 @@ def run_hardware_sensors(bus: MqttBus) -> None:
         NfcReader(bus, reader=m.READER_GATE),
         NfcReader(bus, reader=m.READER_CHECKOUT),
         DurationDial(bus),
+        DistanceSensor(bus),
     ]
     for sensor in sensors:
         sensor.start()
-    print("[pi] hardware sensor skeletons started; TODO loops currently emit no events. Ctrl-C to stop.")
+    print(
+        "[pi] hardware sensors started; distance ranger is live over serial, "
+        "the rest remain TODO skeletons emitting no events. Ctrl-C to stop."
+    )
     try:
         while True:
             time.sleep(1.0)

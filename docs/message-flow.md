@@ -58,6 +58,7 @@ Each topic carries one message type (in
 | `parking/events/gate_motion` | sensors (motion) | control | `GateMotionEvent` |
 | `parking/events/nfc_scan` | sensors (NFC) | control, storage | `NfcScanEvent` |
 | `parking/events/duration_dial` | sensors (rotary) | storage, problem_gen | `DurationDialEvent` |
+| `parking/events/distance` | sensors (ultrasonic) | viz | `DistanceEvent` |
 | `parking/commands/gate` | control / dispatcher | actuators (gate) | `GateCommand` |
 | `parking/commands/buffer_led` | control / dispatcher | actuators (LED) | `BufferLedCommand` |
 | `parking/commands/vehicle_move` | dispatcher | actuators (vehicle) | `VehicleMoveCommand` |
@@ -89,6 +90,7 @@ bus.publish_message(m.OccupancyEvent(spot_id="P1", occupied=True))
 | `GateMotionEvent` | `present` |
 | `NfcScanEvent` | `uid`, `reader` (`gate`/`checkout`) |
 | `DurationDialEvent` | `raw_value`, `minutes?` |
+| `DistanceEvent` | `distance_cm?` (`null` = out of range) |
 | `GateCommand` | `action` (`open`/`close`) |
 | `BufferLedCommand` | `slot_id`, `on` |
 | `VehicleMoveCommand` | `vehicle_uid`, `from_spot`, `to_spot` |

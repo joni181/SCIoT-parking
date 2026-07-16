@@ -53,6 +53,10 @@ class SimulatedSensors:
             m.DurationDialEvent(raw_value=raw_value, minutes=minutes, source=self._source)
         )
 
+    # --- ultrasonic ranger ---------------------------------------------------
+    def measure_distance(self, distance_cm: Optional[float]) -> None:
+        self._bus.publish_message(m.DistanceEvent(distance_cm=distance_cm, source=self._source))
+
 
 class RecordingActuators:
     """Subscribes to actuator commands and records them (no hardware)."""

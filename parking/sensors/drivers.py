@@ -12,6 +12,8 @@ running the test suite never touches the GPIO. Each implements `Sensor`.
 """
 from __future__ import annotations
 
+import re
+import threading
 from typing import Optional
 
 from ..common import models as m
@@ -113,3 +115,69 @@ class DurationDial(Sensor):
         self._bus.publish_message(
             m.DurationDialEvent(raw_value=raw_value, minutes=minutes, source=self._source)
         )
+
+
+_DISTANCE_LINE = re.compile(r"^DISTANCE sensor=\S+ (?:cm=(?P<cm>-?\d+)|status=(?P<status>\S+))")
+
+
+class DistanceSensor(Sensor):
+    """HC-SR04P ultrasonic ranger -> `DistanceEvent`.
+
+    The Mega firmware (`hardware/mega/firmware/rotary_lcd_bringup/mega_controller.c`)
+    prints one line per reading over its USB-serial connection, e.g.
+    `DISTANCE sensor=hc_sr04p_d7_d24 cm=42` or `... status=out-of-range`. This
+    driver owns that serial port, parses those lines on a background thread, and
+    republishes each reading as a `DistanceEvent` (`distance_cm=None` when out of
+    range).
+
+    Requires `pyserial` (only listed in `requirements/pi.txt`); the import is
+    deferred to `start()` so importing this module elsewhere stays hardware-free.
+    """
+
+    def __init__(
+        self,
+        bus: MessageBus,
+        port: str = "/dev/ttyACM0",
+        baudrate: int = 9600,
+        source: str = "pi/sensor/distance",
+    ) -> None:
+        self._bus = bus
+        self._port = port
+        self._baudrate = baudrate
+        self._source = source
+        self._serial = None
+        self._thread: Optional[threading.Thread] = None
+        self._stop_event = threading.Event()
+
+    def start(self) -> None:
+        if self._thread is not None and self._thread.is_alive():
+            return
+        import serial  # deferred: only required on the Pi with real hardware
+
+        self._stop_event.clear()
+        self._serial = serial.Serial(self._port, self._baudrate, timeout=1)
+        self._thread = threading.Thread(target=self._run, name="distance-sensor", daemon=True)
+        self._thread.start()
+
+    def stop(self) -> None:
+        self._stop_event.set()
+        if self._thread is not None:
+            self._thread.join(timeout=2.0)
+            self._thread = None
+        if self._serial is not None:
+            self._serial.close()
+            self._serial = None
+
+    def _run(self) -> None:
+        while not self._stop_event.is_set():
+            raw = self._serial.readline().decode("utf-8", errors="replace").strip()
+            if not raw:
+                continue
+            match = _DISTANCE_LINE.match(raw)
+            if not match:
+                continue
+            cm = match.group("cm")
+            self._publish(float(cm) if cm is not None else None)
+
+    def _publish(self, distance_cm: Optional[float]) -> None:
+        self._bus.publish_message(m.DistanceEvent(distance_cm=distance_cm, source=self._source))

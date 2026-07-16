@@ -46,7 +46,7 @@ created under `/home/group4/arduino-backups/` before using it.
 | RC522 reader 1 | SCK D52, MISO D50, MOSI D51, SS D10, RST D8, 3.3V, GND | IRQ unused; level-shift Mega outputs to 3.3V |
 | RC522 reader 2 | Shared SPI/RST; SS D9, 3.3V, GND | Optional; not currently connected |
 | Photoresistor | A15 | Use the documented LDR + 10kΩ divider |
-| Grove ultrasonic ranger | SIG D7, 5V, GND | One shared trigger/echo signal |
+| HC-SR04P ultrasonic ranger | Trig D7, Echo D24, 5V, GND | Separate trigger and echo signals |
 | Modelcraft RS-2 servo | Signal D6 | Power from a separate regulated 4.8-6V supply; join its GND to Mega GND |
 
 ### LCD wiring note
@@ -64,6 +64,12 @@ parse the `READY`, `ROTARY`, and `BUTTON` lines, and translate them into the
 existing application messages.  It should not live in the Mega firmware, and the
 firmware must not contain MQTT configuration.  That makes additional Mega pins,
 GrovePi devices, and Pi-native SPI/I2C devices plug-and-play additions.
+
+`parking/sensors/drivers.py`'s `DistanceSensor` is the first such adapter: it owns
+the Mega serial port, parses `DISTANCE sensor=hc_sr04p_d7_d24 cm=<n>` /
+`... status=out-of-range` lines on a background thread, and republishes each
+reading as a `DistanceEvent`. The other drivers in that module (light, motion,
+NFC, rotary) still need the same treatment.
 
 ## NFC + photoresistor controller
 
@@ -103,3 +109,18 @@ the servo from the Mega's 5V USB rail.** Connect its power leads to a separate,
 regulated 4.8-6V supply and connect that supply's ground to Mega GND.  Connect the
 servo signal lead to D6.  Check the servo connector labels before wiring rather
 than relying only on wire colours.
+
+## Ultrasonic ranger (HC-SR04P)
+
+`mega_controller.c` polls the HC-SR04P every 250 iterations of the main loop and
+emits its reading as a serial line, e.g.:
+
+```text
+DISTANCE sensor=hc_sr04p_d7_d24 cm=42
+DISTANCE sensor=hc_sr04p_d7_d24 status=out-of-range
+```
+
+Unlike the earlier Grove Ultrasonic Ranger, the HC-SR04P has separate Trig and
+Echo pins rather than one shared SIG line: Trig is driven on D7, Echo is read on
+D24. Expected range is 2-350cm; readings outside that (or a missing echo) report
+`status=out-of-range`.

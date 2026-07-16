@@ -158,6 +158,10 @@ def create_dashboard_app(source: DashboardSource, demo_controller: DemoControlle
                     html.Div(className="panel-heading", children=[html.H2("Recent activity"), html.Span("Newest first")]),
                     html.Div(id="activity-feed"),
                 ]),
+                html.Section(className="panel sensor-panel", children=[
+                    html.Div(className="panel-heading", children=[html.H2("Ultrasonic ranger"), html.Span("HC-SR04P · gate")]),
+                    html.Div(id="distance-reading"),
+                ]),
             ]),
         ]),
     ])
@@ -168,6 +172,7 @@ def create_dashboard_app(source: DashboardSource, demo_controller: DemoControlle
         Output("operator-instruction", "className"), Output("lot-map", "children"),
         Output("assignments-table", "children"), Output("admission-result", "children"),
         Output("plan-view", "children"), Output("activity-feed", "children"),
+        Output("distance-reading", "children"),
     ]
     if demo_controller:
         outputs.extend([
@@ -190,6 +195,7 @@ def create_dashboard_app(source: DashboardSource, demo_controller: DemoControlle
             _admission(html, snapshot),
             _plan(html, snapshot),
             _activity(html, snapshot),
+            _distance(html, snapshot),
         ]
         if demo_controller:
             status = demo_controller.status()
@@ -369,6 +375,15 @@ def _plan(html, snapshot: DashboardSnapshot):
             html.Span(f"Physical phase: {progress}"),
         ]),
         html.Ol(actions, className="plan-actions"),
+    ])
+
+
+def _distance(html, snapshot: DashboardSnapshot):
+    value = snapshot.latest_distance_cm
+    if value is None:
+        return html.Div("Out of range / no reading yet", className="empty-state")
+    return html.Div(className="distance-value", children=[
+        html.Strong(f"{value:.1f}"), html.Span("cm"),
     ])
 
 

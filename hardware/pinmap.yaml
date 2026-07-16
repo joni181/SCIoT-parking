@@ -26,6 +26,14 @@ controllers:
         direction: unused
         mega_port: PA5
         notes: "The module labels this lead SW, but the attached encoder has no usable mechanical press. Do not depend on it."
+      D7:
+        role: ultrasonic_trig
+        direction: output
+        mega_port: PH4
+      D24:
+        role: ultrasonic_echo
+        direction: input
+        mega_port: PA2
       D6:
         role: servo_signal
         direction: timer4_pwm_output
@@ -75,13 +83,14 @@ controllers:
     wiring: "For a bare LDR: 5V -> LDR -> A15 -> 10kΩ resistor -> GND (reversing the divider reverses the reading direction)."
 
   ultrasonic_ranger:
-    model: Grove Ultrasonic Ranger
-    pin: mega.D7
-    interface: one_wire_trigger_echo
+    model: HC-SR04P
+    trig_pin: mega.D7
+    echo_pin: mega.D24
+    interface: two_wire_trigger_echo
     power: 5V
     ground: mega.GND
     output: distance_cm
-    notes: "Trigger and echo share the single SIG line; expected range is 2-350cm."
+    notes: "HC-SR04P has separate Trig/Echo lines (unlike the earlier Grove ranger's shared SIG pin); expected range is 2-350cm. Also tolerates 3.3V power/logic if needed."
 
   modelcraft_rs2_servo:
     pin: mega.D6

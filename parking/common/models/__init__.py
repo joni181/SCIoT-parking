@@ -12,6 +12,7 @@ from .messages import (
     READER_GATE,
     BufferLedCommand,
     AdmissionResult,
+    DistanceEvent,
     DurationDialEvent,
     GateCommand,
     GateMotionEvent,
@@ -35,6 +36,7 @@ __all__ = [
     "GateMotionEvent",
     "NfcScanEvent",
     "DurationDialEvent",
+    "DistanceEvent",
     # commands
     "GateCommand",
     "BufferLedCommand",

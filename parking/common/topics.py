@@ -20,6 +20,7 @@ EVT_OCCUPANCY = f"{ROOT}/events/occupancy"          # a parking/buffer spot chan
 EVT_GATE_MOTION = f"{ROOT}/events/gate_motion"      # vehicle present/absent at the gate
 EVT_NFC_SCAN = f"{ROOT}/events/nfc_scan"            # a card was read (gate or checkout)
 EVT_DURATION_DIAL = f"{ROOT}/events/duration_dial"  # rotary dial: expected parking duration
+EVT_DISTANCE = f"{ROOT}/events/distance"            # ultrasonic ranger: distance reading
 
 # --- Commands: published by control logic; consumed by actuators (Pi) ---
 CMD_GATE = f"{ROOT}/commands/gate"                  # open / close the gate

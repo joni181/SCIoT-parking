@@ -5,7 +5,7 @@
  * - RC522 reader 1: SCK D13, MISO D12, MOSI D11, SS D10, RST D8
  * - RC522 reader 2: shared SCK/MISO/MOSI/RST, SS D9 (optional)
  * - Photoresistor: A15 / ADC15
- * - Grove ultrasonic ranger: D7/PH4 shared trigger/echo signal
+ * - HC-SR04P ultrasonic ranger: Trig D7/PH4, Echo D24/PA2
  * - Modelcraft RS-2 servo: D6/PH3 PWM signal
  *
  * The controller probes both the supplied Uno/Nano D11-D13 wiring and the
@@ -46,7 +46,8 @@
 #define NFC_SCK PB7   /* Arduino D13 */
 #define NFC_SS_2 PH6  /* Arduino D9 */
 #define NFC_RST PH5   /* Arduino D8 */
-#define ULTRASONIC_SIG PH4 /* Arduino D7 */
+#define ULTRASONIC_TRIG PH4 /* Arduino D7 */
+#define ULTRASONIC_ECHO PA2 /* Arduino D24 */
 #define SERVO_PIN PH3 /* Arduino D6 / Timer4 output compare A */
 
 #define SERVO_MIN_DEGREES 0
@@ -313,32 +314,31 @@ static void publish_light(uint16_t raw) {
 }
 
 static void ultrasonic_init(void) {
-    DDRH |= _BV(ULTRASONIC_SIG);
-    PORTH &= (uint8_t)~_BV(ULTRASONIC_SIG);
+    DDRH |= _BV(ULTRASONIC_TRIG);
+    PORTH &= (uint8_t)~_BV(ULTRASONIC_TRIG);
+    DDRA &= (uint8_t)~_BV(ULTRASONIC_ECHO);
     /* Timer1 at F_CPU/8 = 2MHz: one tick is 0.5us. */
     TCCR1A = 0;
     TCCR1B = _BV(CS11);
 }
 
-/* Grove ranger uses one SIG line: emit a 10us trigger, then time its echo. */
+/* HC-SR04P has separate Trig/Echo lines: emit a 10us trigger pulse on Trig, then time the Echo pulse width. */
 static int16_t ultrasonic_measure_cm(void) {
-    DDRH |= _BV(ULTRASONIC_SIG);
-    PORTH &= (uint8_t)~_BV(ULTRASONIC_SIG);
+    PORTH &= (uint8_t)~_BV(ULTRASONIC_TRIG);
     _delay_us(2);
-    PORTH |= _BV(ULTRASONIC_SIG);
+    PORTH |= _BV(ULTRASONIC_TRIG);
     _delay_us(12);
-    PORTH &= (uint8_t)~_BV(ULTRASONIC_SIG);
-    DDRH &= (uint8_t)~_BV(ULTRASONIC_SIG);
+    PORTH &= (uint8_t)~_BV(ULTRASONIC_TRIG);
 
     TCNT1 = 0;
-    while (!(PINH & _BV(ULTRASONIC_SIG))) {
+    while (!(PINA & _BV(ULTRASONIC_ECHO))) {
         if (TCNT1 >= 60000) { /* 30ms: no echo / out of range */
             return -1;
         }
     }
 
     TCNT1 = 0;
-    while (PINH & _BV(ULTRASONIC_SIG)) {
+    while (PINA & _BV(ULTRASONIC_ECHO)) {
         if (TCNT1 >= 60000) {
             return -1;
         }
@@ -347,7 +347,7 @@ static int16_t ultrasonic_measure_cm(void) {
 }
 
 static void publish_distance(int16_t distance_cm) {
-    uart_puts("DISTANCE sensor=ultrasonic_d7 ");
+    uart_puts("DISTANCE sensor=hc_sr04p_d7_d24 ");
     if (distance_cm < 0) {
         uart_puts("status=out-of-range");
     } else {
@@ -442,7 +442,7 @@ int main(void) {
 
     uart_puts("READY controller=mega lcd=");
     uart_puts(lcd_ready ? "pcf8574-ready" : "not-found");
-    uart_puts(" rotary=D23,D25 light=A15 ultrasonic=D7 servo=D6\r\n");
+    uart_puts(" rotary=D23,D25 light=A15 ultrasonic=D7trig,D24echo servo=D6\r\n");
     controller_publish_position(position, lcd_ready);
 
     for (;;) {
