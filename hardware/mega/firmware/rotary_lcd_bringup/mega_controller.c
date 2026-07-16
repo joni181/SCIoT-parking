@@ -402,11 +402,54 @@ static bool uart_try_getc(char *out) {
     return true;
 }
 
+/* Calibration escape hatch: set the servo to any angle directly, without
+ * going through the open/closed vocabulary, so a physical closed/open
+ * position can be tuned live over serial instead of by re-flashing per guess.
+ */
+#define SERVO_ANGLE_PREFIX "SERVO ANGLE="
+#define SERVO_ANGLE_PREFIX_LEN 12
+
+static bool parse_uint8(const char *text, uint8_t *out) {
+    if (*text == '\0') {
+        return false;
+    }
+    uint16_t value = 0;
+    for (; *text; ++text) {
+        if (*text < '0' || *text > '9') {
+            return false;
+        }
+        value = (uint16_t)(value * 10 + (uint8_t)(*text - '0'));
+        if (value > SERVO_MAX_DEGREES) {
+            return false;
+        }
+    }
+    *out = (uint8_t)value;
+    return true;
+}
+
+static void servo_set_raw_angle(uint8_t angle) {
+    const uint16_t pulse_us = SERVO_MIN_PULSE_US +
+        (((uint32_t)angle * (SERVO_MAX_PULSE_US - SERVO_MIN_PULSE_US)) /
+         SERVO_MAX_DEGREES);
+    OCR4A = pulse_us * 2;
+
+    uart_puts("SERVO angle=");
+    uart_put_i16(angle);
+    uart_puts(" pulse_us=");
+    uart_put_i16(pulse_us);
+    uart_puts("\r\n");
+}
+
 static void gate_handle_line(const char *line) {
     if (strcmp(line, "GATE OPEN") == 0) {
         gate_set(true);
     } else if (strcmp(line, "GATE CLOSE") == 0) {
         gate_set(false);
+    } else if (strncmp(line, SERVO_ANGLE_PREFIX, SERVO_ANGLE_PREFIX_LEN) == 0) {
+        uint8_t angle;
+        if (parse_uint8(line + SERVO_ANGLE_PREFIX_LEN, &angle)) {
+            servo_set_raw_angle(angle);
+        }
     }
 }
 
