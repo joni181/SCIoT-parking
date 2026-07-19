@@ -471,7 +471,7 @@ static bool parse_uint8(const char *text, uint8_t *out) {
  * shows the same duration the rest of the system actually uses - keep these
  * in sync if either side's defaults change. */
 #define DIAL_DEFAULT_MINUTES 30
-#define DIAL_MINUTES_PER_TICK 5
+#define DIAL_MINUTES_PER_TICK -5 /* negative: physical rotation direction is reversed */
 #define DIAL_MIN_MINUTES 5
 #define DIAL_MAX_MINUTES 180
 

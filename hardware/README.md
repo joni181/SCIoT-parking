@@ -181,11 +181,12 @@ PARKING_LIGHT_THRESHOLD=650 PARKING_SENSORS=hardware python apps/pi_node.py     
 from the plain rotary+LCD bring-up target), but the LCD now shows the mapped
 duration instead of the raw tick count - `Duration` / `NN min` - matching
 what `parking.sensors.DurationDial` actually derives from those ticks on the
-Pi side (`default_minutes=30`, `minutes_per_tick=5`, clamped 5-180). The
-mapping is duplicated in both places (`DIAL_*` constants in
-`mega_controller.c`, the same-named constructor args in `apps/pi_node.py`) -
-keep them in sync if either changes, since nothing enforces that
-automatically.
+Pi side (`default_minutes=30`, `minutes_per_tick=-5`, clamped 5-180 -
+negative because the physical rotation direction is reversed from what the
+raw quadrature decode produces). The mapping is duplicated in both places
+(`DIAL_*` constants in `mega_controller.c`, the same-named constructor args
+in `apps/pi_node.py`) - keep them in sync if either changes, since nothing
+enforces that automatically.
 
 ## Servo behavior and power
 

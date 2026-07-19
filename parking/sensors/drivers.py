@@ -197,7 +197,7 @@ class DurationDial(Sensor):
         bus: MessageBus,
         link: Optional[MegaLink] = None,
         default_minutes: int = 30,
-        minutes_per_tick: int = 5,
+        minutes_per_tick: int = -5,  # negative: physical rotation direction is reversed
         min_minutes: int = 5,
         max_minutes: int = 180,
         source: str = "pi/sensor/rotary",
