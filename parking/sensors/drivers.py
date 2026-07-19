@@ -50,6 +50,14 @@ class OccupancySensor(Sensor):
     readings for the specific sensor with the spot empty vs. covered (see
     `hardware/pi/bringup/test_photoresistor_threshold.py`) and set both to
     match what you actually observe.
+
+    Only publishes when `occupied` actually flips, not on every ~0.5s
+    reading: downstream, every `OccupancyEvent` triggers a full replan
+    (`ProblemGenerationService`), so republishing an unchanged state floods
+    the bus with redundant replans - and if a car is mid-admission, a burst
+    of near-simultaneous replans can each independently re-derive the same
+    `open-entry` action before the first one's result has propagated back,
+    which looks like the gate re-opening/closing on its own.
     """
 
     def __init__(
@@ -69,6 +77,7 @@ class OccupancySensor(Sensor):
         self._threshold = threshold
         self._occupied_below_threshold = occupied_below_threshold
         self._source = f"{source}/{spot_id}"
+        self._last_occupied: Optional[bool] = None
 
     def start(self) -> None:
         if self._link is not None:
@@ -84,7 +93,11 @@ class OccupancySensor(Sensor):
             return
         raw = int(match.group("raw"))
         below = raw < self._threshold
-        self._publish(occupied=below if self._occupied_below_threshold else not below, raw_value=raw)
+        occupied = below if self._occupied_below_threshold else not below
+        if occupied == self._last_occupied:
+            return
+        self._last_occupied = occupied
+        self._publish(occupied=occupied, raw_value=raw)
 
     def _publish(self, occupied: bool, raw_value: Optional[int] = None) -> None:
         self._bus.publish_message(

@@ -80,3 +80,33 @@ def test_different_spots_can_have_different_thresholds():
         sensor._on_line("LIGHT sensor=photoresistor_a13 raw=400")
 
     assert [(e.spot_id, e.occupied) for e in events] == [("P1", False), ("P2", True)]
+
+
+def test_does_not_republish_an_unchanged_state():
+    """Real hardware reports roughly twice a second; without this guard every
+    reading triggers a full replan downstream (see ProblemGenerationService),
+    flooding the bus even while nothing about the spot actually changed."""
+    bus = MemoryBus()
+    events = _events(bus)
+    sensor = OccupancySensor(bus, "P1", sensor_label="photoresistor_a12", threshold=55)
+
+    sensor._on_line("LIGHT sensor=photoresistor_a12 raw=6")
+    sensor._on_line("LIGHT sensor=photoresistor_a12 raw=4")   # still occupied, noisy value
+    sensor._on_line("LIGHT sensor=photoresistor_a12 raw=8")   # still occupied
+
+    assert len(events) == 1
+    assert events[0].occupied is True
+
+
+def test_republishes_when_occupancy_actually_flips():
+    bus = MemoryBus()
+    events = _events(bus)
+    sensor = OccupancySensor(bus, "P1", sensor_label="photoresistor_a12", threshold=55)
+
+    sensor._on_line("LIGHT sensor=photoresistor_a12 raw=6")     # occupied
+    sensor._on_line("LIGHT sensor=photoresistor_a12 raw=6")     # unchanged, suppressed
+    sensor._on_line("LIGHT sensor=photoresistor_a12 raw=108")   # now free
+    sensor._on_line("LIGHT sensor=photoresistor_a12 raw=105")   # unchanged, suppressed
+    sensor._on_line("LIGHT sensor=photoresistor_a12 raw=4")     # occupied again
+
+    assert [e.occupied for e in events] == [True, False, True]
