@@ -145,6 +145,10 @@ def run_hardware_sensors(bus: MqttBus, link: MegaLink) -> None:
     ]
     for sensor in sensors:
         sensor.start()
+    # Nothing else parses the Mega's "GATE state=..." reply - without this,
+    # confirming a GATE OPEN/CLOSE was actually received/executed requires a
+    # second serial reader, which contends with this process for the port.
+    link.add_listener(lambda line: print(f"[mega] {line}") if line.startswith("GATE ") else None)
     link.start()
     print(
         "[pi] hardware sensors started; distance ranger, NFC readers, and all "
