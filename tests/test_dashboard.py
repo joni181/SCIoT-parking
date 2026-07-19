@@ -109,8 +109,10 @@ def test_dash_app_serves_root_without_opening_browser():
     response = app.server.test_client().get("/")
     layout = app.server.test_client().get("/_dash-layout")
     stylesheet = app.server.test_client().get("/assets/dashboard.css")
+    logo = app.server.test_client().get("/assets/lidl-logo.svg")
 
     assert response.status_code == 200
     assert layout.status_code == 200
     assert stylesheet.status_code == 200
-    assert b"Parking control center" in layout.data
+    assert logo.status_code == 200
+    assert b"LIDL Parking Control Center" in layout.data
