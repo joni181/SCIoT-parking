@@ -150,6 +150,15 @@ To pick `parking.sensors.OccupancySensor`'s threshold, run
 python3 hardware/pi/bringup/test_photoresistor_threshold.py
 ```
 
+With this wiring, raw readings drop when the buffer is covered (measured
+~300 covered vs. ~860 empty on the current mounting) - `PARKING_LIGHT_THRESHOLD`
+(default `600`) sits in that gap. Re-run this script and pass a new value if
+ambient light shifts enough to move the gap:
+
+```bash
+PARKING_LIGHT_THRESHOLD=650 PARKING_SENSORS=hardware python apps/pi_node.py
+```
+
 ## Servo behavior and power
 
 `mega_controller.c` also drives the Modelcraft RS-2 on D6, commanded over serial

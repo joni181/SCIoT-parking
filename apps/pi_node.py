@@ -21,6 +21,7 @@ implemented. There is no gate motion sensor in the current hardware;
     PARKING_BROKER_HOST=192.168.0.10 python apps/pi_node.py     # broker on the laptop
     PARKING_SENSORS=hardware python apps/pi_node.py             # on the real Pi
     PARKING_MEGA_PORT=/dev/ttyACM0 PARKING_SENSORS=hardware python apps/pi_node.py  # override the port
+    PARKING_LIGHT_THRESHOLD=650 PARKING_SENSORS=hardware python apps/pi_node.py    # re-tune for today's light
 """
 from __future__ import annotations
 
@@ -105,10 +106,14 @@ def run_hardware_sensors(bus: MqttBus, link: MegaLink) -> None:
     be started *before* `link.start()` opens the port and begins dispatching
     lines to those listeners.
     """
+    light_threshold = int(os.environ.get("PARKING_LIGHT_THRESHOLD", "600"))
+
     sensors = [
         # Only one photoresistor is wired up today (A15, over the buffer);
-        # there's nothing real to construct for P1/P2/P3 yet.
-        OccupancySensor(bus, "B1", link),
+        # there's nothing real to construct for P1/P2/P3 yet. 600 sits in the
+        # gap between calibrated readings (~300 covered, ~860 empty); override
+        # with PARKING_LIGHT_THRESHOLD if ambient light shifts things later.
+        OccupancySensor(bus, "B1", link, threshold=light_threshold),
         NfcReader(bus, link, reader=m.READER_GATE, firmware_reader=1),
         NfcReader(bus, link, reader=m.READER_CHECKOUT, firmware_reader=2),
         DurationDial(bus),
