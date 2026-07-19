@@ -18,7 +18,8 @@ USB-serial connection.
 from __future__ import annotations
 
 import re
-from typing import Optional
+import time
+from typing import Callable, Optional
 
 from ..common import models as m
 from ..common.messaging import MessageBus
@@ -65,6 +66,15 @@ class NfcReader(Sensor):
     prints `NFC reader=<1|2> uid=<hex>` whenever a reader sees a (new) card.
     Reader 1 is the entrance/gate reader, reader 2 is the optional checkout
     reader; `firmware_reader` picks which one this instance listens for.
+
+    The firmware itself tries not to repeat a still-present card, but its
+    anti-collision read can intermittently miss it for one poll even while the
+    card hasn't moved, which resets its own "already saw this card" tracking
+    and republishes. A card held a bit longer than a quick tap can therefore
+    produce several `NFC reader=... uid=...` lines for what is physically one
+    scan. Debounce here: don't republish the same UID again within
+    `debounce_s` of the last publish, so downstream (which treats every scan
+    as a fresh arrival/checkout request) doesn't re-run for the same tap.
     """
 
     def __init__(
@@ -74,12 +84,18 @@ class NfcReader(Sensor):
         reader: str = m.READER_GATE,
         firmware_reader: int = 1,
         source: str = "pi/sensor/nfc",
+        debounce_s: float = 2.0,
+        clock: Callable[[], float] = time.monotonic,
     ) -> None:
         self._bus = bus
         self._link = link
         self._reader = reader
         self._firmware_reader = firmware_reader
         self._source = f"{source}/{reader}"
+        self._debounce_s = debounce_s
+        self._clock = clock
+        self._last_uid: Optional[str] = None
+        self._last_scan_time: Optional[float] = None
 
     def start(self) -> None:
         if self._link is not None:
@@ -93,7 +109,17 @@ class NfcReader(Sensor):
         match = _NFC_LINE.match(line)
         if not match or int(match.group("reader")) != self._firmware_reader:
             return
-        self._publish(match.group("uid"))
+        uid = match.group("uid")
+        now = self._clock()
+        if (
+            uid == self._last_uid
+            and self._last_scan_time is not None
+            and (now - self._last_scan_time) < self._debounce_s
+        ):
+            return
+        self._last_uid = uid
+        self._last_scan_time = now
+        self._publish(uid)
 
     def _publish(self, uid: str) -> None:
         self._bus.publish_message(m.NfcScanEvent(uid=uid, reader=self._reader, source=self._source))
