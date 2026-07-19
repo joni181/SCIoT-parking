@@ -1,4 +1,4 @@
-# SCIoT Parking — Intelligent Supermarket Parking System
+# SCIoT Parking: Intelligent Supermarket Parking System
 
 > Drop your car at the entrance, go shopping, and find it waiting for you when you've paid.
 
@@ -14,9 +14,9 @@ pickup.
 
 Two machines, one message bus:
 
-- **Raspberry Pi** — the hardware: sensors (NFC, light, motion, dial) and actuators (gate motor, LED).
-- **Laptop** — the brains and the screens: AI planner, data storage, visualization.
-- **MQTT broker** — the "post office" both machines dial into; nothing talks directly.
+- **Raspberry Pi**: the hardware, sensors (NFC, light, motion, dial) and actuators (gate motor, LED).
+- **Laptop**: the brains and the screens, AI planner, data storage, visualization.
+- **MQTT broker**: the "post office" both machines dial into; nothing talks directly.
 
 → Full module map and data flow: **[Architecture](docs/architecture.md)**
 
@@ -24,11 +24,11 @@ Two machines, one message bus:
 
 | Where | What you'll find |
 |---|---|
-| **[`parking/`](parking/README.md)** | All application code — one folder per logical module |
+| **[`parking/`](parking/README.md)** | All application code, one folder per logical module |
 | ↳ [`parking/common/`](parking/common/README.md) | The communication layer (MQTT), shared by both nodes |
 | **[`apps/`](apps/README.md)** | Entrypoints you actually run: `pi_node` · `laptop_node` · `planner` |
 | **[`config/`](config/README.md)** | Per-node runtime settings (broker address, parking layout) |
-| **[`deploy/`](deploy/README.md)** | The MQTT broker — a pure-Python `amqtt` server (`broker.py`) |
+| **[`deploy/`](deploy/README.md)** | The MQTT broker: a pure-Python `amqtt` server (`broker.py`) |
 | **[`requirements/`](requirements/)** | Per-node Python dependencies (`common` ← `pi` / `laptop`) |
 | **[`docs/`](docs/architecture.md)** | [Architecture](docs/architecture.md) · [Message flow](docs/message-flow.md) · [Concept drawing](docs/parking%20concept%20model.md) |
 | **[`experiments/`](experiments/)** | Hardware spikes / sensor test scripts (reference) |
@@ -36,7 +36,7 @@ Two machines, one message bus:
 ## Getting started
 
 The broker is **one process on the laptop**; every node dials into it. The whole
-stack is Python — nothing to install system-wide.
+stack is Python, so there's nothing to install system-wide.
 
 ### 0. Install dependencies
 
@@ -67,7 +67,7 @@ override without editing the file: `PARKING_BROKER_HOST=… PARKING_BROKER_PORT=
 **Laptop** (two terminals):
 
 ```bash
-python deploy/broker.py        # 1) the MQTT broker — keep it running
+python deploy/broker.py        # 1) the MQTT broker (keep it running)
 python apps/laptop_node.py     # 2) laptop services + operator dashboard
 ```
 
@@ -107,4 +107,4 @@ python examples/message_flow_demo.py   # both scenarios, one process
 pytest -m "not integration"            # fast tests, no broker (in-memory bus)
 ```
 
-(Bare `pytest` also runs the broker-backed integration tier — see [tests/README.md](tests/README.md).)
+(Bare `pytest` also runs the broker-backed integration tier; see [tests/README.md](tests/README.md).)
