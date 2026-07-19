@@ -27,26 +27,58 @@ from ..mega_link import MegaLink
 from .base import Sensor
 
 
-class OccupancySensor(Sensor):
-    """Light sensor over one parking/buffer spot -> `OccupancyEvent`.
+_LIGHT_LINE = re.compile(r"^LIGHT sensor=\S+ raw=(?P<raw>\d+)$")
 
-    Raw Grove read: see experiments/light-sensor-grove-pi.py.
+
+class OccupancySensor(Sensor):
+    """Photoresistor over one parking/buffer spot -> `OccupancyEvent`.
+
+    The Mega firmware (`hardware/mega/firmware/mega_controller/mega_controller.c`)
+    prints `LIGHT sensor=photoresistor_a15 raw=<0-1023>` roughly twice a
+    second. Only one photoresistor is wired up right now - A15, mounted over
+    the buffer B1 (see `hardware/pinmap.yaml`) - so only one real instance of
+    this class should be constructed against hardware today; every reading is
+    that one sensor, there's no per-spot identifier in the line itself.
+
+    `threshold`/`occupied_below_threshold` need calibrating against the actual
+    mounting: whether a lower or higher raw ADC value means "something is
+    blocking the light" depends on which way the LDR voltage divider is wired
+    (see pinmap.yaml's wiring note), and the exact crossover point depends on
+    ambient light. Watch a few `LIGHT ...` readings with the spot empty vs.
+    covered and set both to match what you actually observe.
     """
 
-    def __init__(self, bus: MessageBus, spot_id: str, source: str = "pi/sensor/light") -> None:
+    def __init__(
+        self,
+        bus: MessageBus,
+        spot_id: str,
+        link: Optional[MegaLink] = None,
+        threshold: int = 512,
+        occupied_below_threshold: bool = True,
+        source: str = "pi/sensor/light",
+    ) -> None:
         self._bus = bus
         self._spot_id = spot_id
+        self._link = link
+        self._threshold = threshold
+        self._occupied_below_threshold = occupied_below_threshold
         self._source = f"{source}/{spot_id}"
 
     def start(self) -> None:
-        # TODO: poll the Grove light pin (or wire an interrupt) and call
-        #       self._publish(occupied=...) whenever the reading crosses the
-        #       occupied/free threshold.
-        ...
+        if self._link is not None:
+            self._link.add_listener(self._on_line)
 
     def stop(self) -> None:
-        # TODO: stop the poll loop / release the GPIO handle.
-        ...
+        if self._link is not None:
+            self._link.remove_listener(self._on_line)
+
+    def _on_line(self, line: str) -> None:
+        match = _LIGHT_LINE.match(line)
+        if not match:
+            return
+        raw = int(match.group("raw"))
+        below = raw < self._threshold
+        self._publish(occupied=below if self._occupied_below_threshold else not below, raw_value=raw)
 
     def _publish(self, occupied: bool, raw_value: Optional[int] = None) -> None:
         self._bus.publish_message(

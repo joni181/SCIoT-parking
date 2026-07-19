@@ -80,7 +80,9 @@ controllers:
     pin: mega.A15
     interface: adc15
     output: raw_0_to_1023
+    covers: buffer.B1
     wiring: "For a bare LDR: 5V -> LDR -> A15 -> 10kΩ resistor -> GND (reversing the divider reverses the reading direction)."
+    notes: "Only one photoresistor exists; it watches the buffer (B1), not P1/P2/P3. parking.sensors.OccupancySensor's threshold/direction need calibrating against the physical mounting - watch raw values with the buffer empty vs. covered."
 
   ultrasonic_ranger:
     model: HC-SR04P

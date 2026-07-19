@@ -8,12 +8,14 @@ Sensors are the one piece that needs real hardware. By default this runs the
 hardware-free `SimulatedSensors` and plays a short scripted scenario, so you can
 run it with no hardware and watch the laptop react over the broker.
 `PARKING_SENSORS=hardware` opens a `MegaLink` to the Mega's serial port and
-selects the real drivers: `DistanceSensor` and `NfcReader` are live over that
-link, `GateServo` sends real `GATE OPEN`/`GATE CLOSE` commands over it, and
-`OccupancySensor`/`DurationDial`/`BufferLed`/`VehicleMover` remain inert until
-their `TODO` hardware loops are implemented. There is no gate motion sensor in
-the current hardware; `GateSafetyController` closes the gate on a timer
-instead (see `parking/dispatching/gate_safety.py`).
+selects the real drivers: `DistanceSensor`, `NfcReader`, and one buffer
+`OccupancySensor` (the only photoresistor wired up so far, see
+`hardware/pinmap.yaml`) are live over that link, `GateServo` sends real
+`GATE OPEN`/`GATE CLOSE` commands over it, and `DurationDial`/`BufferLed`/
+`VehicleMover` remain inert until their `TODO` hardware loops are
+implemented. There is no gate motion sensor in the current hardware;
+`GateSafetyController` closes the gate on a timer instead (see
+`parking/dispatching/gate_safety.py`).
 
     python apps/pi_node.py
     PARKING_BROKER_HOST=192.168.0.10 python apps/pi_node.py     # broker on the laptop
@@ -39,7 +41,6 @@ from parking.sensors import DistanceSensor, DurationDial, NfcReader, OccupancySe
 from parking.simulation import SimulatedSensors  # noqa: E402
 
 REGISTERED_CARD = "AB12CD34"
-PARKING_SPOTS = ["P1", "P2", "P3"]
 
 
 def pi_components(bus: MqttBus, link: Optional[MegaLink] = None) -> list:
@@ -104,7 +105,10 @@ def run_hardware_sensors(bus: MqttBus, link: MegaLink) -> None:
     be started *before* `link.start()` opens the port and begins dispatching
     lines to those listeners.
     """
-    sensors = [OccupancySensor(bus, spot) for spot in PARKING_SPOTS] + [
+    sensors = [
+        # Only one photoresistor is wired up today (A15, over the buffer);
+        # there's nothing real to construct for P1/P2/P3 yet.
+        OccupancySensor(bus, "B1", link),
         NfcReader(bus, link, reader=m.READER_GATE, firmware_reader=1),
         NfcReader(bus, link, reader=m.READER_CHECKOUT, firmware_reader=2),
         DurationDial(bus),
@@ -114,9 +118,9 @@ def run_hardware_sensors(bus: MqttBus, link: MegaLink) -> None:
         sensor.start()
     link.start()
     print(
-        "[pi] hardware sensors started; distance ranger and NFC readers are "
-        "live over serial, occupancy/duration remain TODO skeletons emitting "
-        "no events. Ctrl-C to stop."
+        "[pi] hardware sensors started; distance ranger, NFC readers, and the "
+        "buffer's photoresistor are live over serial; duration dial remains a "
+        "TODO skeleton emitting no events. Ctrl-C to stop."
     )
     try:
         while True:
