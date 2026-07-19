@@ -11,8 +11,13 @@
  *
  * The controller probes both the supplied Uno/Nano D11-D13 wiring and the
  * Mega's native D50-D52 SPI wiring, then uses the one where reader 1 responds.
+ *
+ * Serial RX (the GATE OPEN/CLOSE command channel) is interrupt-driven, not
+ * polled, so it can't be starved by uart_puts()'s busy-wait transmission of
+ * the periodic LIGHT/DISTANCE/NFC/ROTARY lines - see uart_try_getc().
  */
 
+#include <avr/interrupt.h>
 #include <string.h>
 
 #define MEGA_CONTROLLER_LIBRARY
@@ -406,11 +411,34 @@ static void gate_set(bool open) {
     uart_puts("\r\n");
 }
 
+/* Incoming bytes are captured by ISR, not polled: uart_puts() busy-waits per
+ * byte while transmitting (LIGHT/DISTANCE/NFC/ROTARY lines), and during those
+ * multi-millisecond windows nothing would otherwise be reading UDR0 - the
+ * single-byte hardware RX register has no FIFO, so a GATE OPEN/CLOSE byte
+ * arriving mid-transmission would silently overwrite/be lost (UART overrun).
+ * The interrupt preempts that busy-wait immediately regardless of what the
+ * main loop is doing. */
+#define UART_RX_BUFFER_SIZE 32
+static volatile char uart_rx_buffer[UART_RX_BUFFER_SIZE];
+static volatile uint8_t uart_rx_head = 0;
+static volatile uint8_t uart_rx_tail = 0;
+
+ISR(USART0_RX_vect) {
+    const uint8_t next_head = (uint8_t)((uart_rx_head + 1) % UART_RX_BUFFER_SIZE);
+    if (next_head != uart_rx_tail) {
+        uart_rx_buffer[uart_rx_head] = (char)UDR0;
+        uart_rx_head = next_head;
+    } else {
+        (void)UDR0; /* buffer full: drop the byte, but still clear RXC0 */
+    }
+}
+
 static bool uart_try_getc(char *out) {
-    if (!(UCSR0A & _BV(RXC0))) {
+    if (uart_rx_head == uart_rx_tail) {
         return false;
     }
-    *out = (char)UDR0;
+    *out = uart_rx_buffer[uart_rx_tail];
+    uart_rx_tail = (uint8_t)((uart_rx_tail + 1) % UART_RX_BUFFER_SIZE);
     return true;
 }
 
@@ -499,7 +527,11 @@ int main(void) {
     NfcReaderState readers[NFC_READER_COUNT] = {0};
 
     uart_init();
-    UCSR0B |= _BV(RXEN0); /* also receive, for "GATE OPEN"/"GATE CLOSE" commands */
+    /* Also receive, for "GATE OPEN"/"GATE CLOSE" commands - RXCIE0 makes
+     * reception interrupt-driven so it can't be starved by uart_puts()'s
+     * busy-wait transmission of the periodic sensor lines. */
+    UCSR0B |= _BV(RXEN0) | _BV(RXCIE0);
+    sei();
     DDRA |= _BV(LED_BIT);
     DDRA &= (uint8_t)~(_BV(ROTARY_CLK) | _BV(ROTARY_DT));
     PORTA |= _BV(ROTARY_CLK) | _BV(ROTARY_DT);
