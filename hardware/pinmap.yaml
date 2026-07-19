@@ -38,7 +38,7 @@ controllers:
         role: servo_signal
         direction: timer4_pwm_output
         mega_port: PH3/OC4A
-        notes: "Modelcraft RS-2: 20ms control period, 1-2ms pulse. Commanded over serial with GATE OPEN / GATE CLOSE lines (closed=0deg, open=90deg, closed by default on boot); no longer tied to the rotary encoder."
+        notes: "Modelcraft RS-2: 20ms control period, 1-2ms pulse. Commanded over serial with GATE OPEN / GATE CLOSE lines (closed=0deg, open=180deg, closed by default on boot); no longer tied to the rotary encoder. Angles calibrated live via SERVO ANGLE=<n>/servo_test.c against the physical gate."
     power:
       5V: "Use the sensor/module VCC requirement; all controller and sensor grounds must be common."
       GND: common_ground
@@ -99,7 +99,7 @@ controllers:
     input: serial_gate_command
     gate_angles:
       closed_degrees: 0
-      open_degrees: 90
+      open_degrees: 180
     serial_protocol: "Pi -> Mega text lines \"GATE OPEN\" / \"GATE CLOSE\"; Mega replies \"GATE state=<open|closed> angle=<deg> pulse_us=<n>\". Closed on boot."
     power: "Separate regulated 4.8-6V supply; connect its GND to Mega GND. Do not power it from the Mega USB 5V rail."
 

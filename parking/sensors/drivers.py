@@ -61,7 +61,7 @@ _NFC_LINE = re.compile(r"^NFC reader=(?P<reader>\d) uid=(?P<uid>[0-9A-Fa-f]+)$")
 class NfcReader(Sensor):
     """RC522 NFC reader at the gate or checkout -> `NfcScanEvent`.
 
-    The Mega firmware (`hardware/mega/firmware/rotary_lcd_bringup/mega_controller.c`)
+    The Mega firmware (`hardware/mega/firmware/mega_controller/mega_controller.c`)
     prints `NFC reader=<1|2> uid=<hex>` whenever a reader sees a (new) card.
     Reader 1 is the entrance/gate reader, reader 2 is the optional checkout
     reader; `firmware_reader` picks which one this instance listens for.
@@ -129,7 +129,7 @@ _DISTANCE_LINE = re.compile(r"^DISTANCE sensor=\S+ (?:cm=(?P<cm>-?\d+)|status=(?
 class DistanceSensor(Sensor):
     """HC-SR04P ultrasonic ranger -> `DistanceEvent`.
 
-    The Mega firmware (`hardware/mega/firmware/rotary_lcd_bringup/mega_controller.c`)
+    The Mega firmware (`hardware/mega/firmware/mega_controller/mega_controller.c`)
     prints one line per reading over its USB-serial connection, e.g.
     `DISTANCE sensor=hc_sr04p_d7_d24 cm=42` or `... status=out-of-range`. This
     driver listens on the shared `MegaLink`, parses those lines, and

@@ -23,7 +23,7 @@ class GateServo(Actuator):
     """Servo motor at the gate. Consumes `GateCommand` (open / close).
 
     Drives the Mega's servo by sending "GATE OPEN" / "GATE CLOSE" over the
-    shared `MegaLink` (see `hardware/mega/firmware/rotary_lcd_bringup/mega_controller.c`).
+    shared `MegaLink` (see `hardware/mega/firmware/mega_controller/mega_controller.c`).
     With no `link` (simulated/no-hardware runs) this is a no-op, matching the
     previous skeleton behavior.
     """

@@ -8,8 +8,10 @@ numbers.
 ## Layout
 
 - `pinmap.yaml` is the single source of truth for physical connections.
-- `mega/firmware/rotary_lcd_bringup/` contains a small, standalone Mega firmware
-  for proving the rotary encoder and LCD work together.
+- `mega/firmware/mega_controller/` contains the Mega firmware: `mega_controller.c`
+  (the real, combined controller - rotary, LCD, NFC, ultrasonic, servo) plus
+  standalone bring-up/test sketches (`servo_test.c`, `i2c_scan.c`, etc.) built
+  with the same Makefile.
 - `pi/bringup/` contains non-production Pi utilities.  They confirm the serial
   protocol before a future `parking.sensors` adapter publishes MQTT events.
 
@@ -27,11 +29,11 @@ git checkout feature/hardware-compatibility
 git pull origin feature/hardware-compatibility
 ```
 
-**On the Pi**, if `hardware/mega/firmware/rotary_lcd_bringup/mega_controller.c`
+**On the Pi**, if `hardware/mega/firmware/mega_controller/mega_controller.c`
 changed, reflash the Mega before running anything against it:
 
 ```bash
-cd hardware/mega/firmware/rotary_lcd_bringup
+cd hardware/mega/firmware/mega_controller
 make TARGET=mega_controller
 make upload TARGET=mega_controller PORT=/dev/ttyACM0
 ```
@@ -70,7 +72,7 @@ application input.  The firmware toggles the LED on D22 whenever the displayed
 position changes.
 
 ```bash
-cd ~/SCIoT-parking/hardware/mega/firmware/rotary_lcd_bringup
+cd ~/SCIoT-parking/hardware/mega/firmware/mega_controller
 make TARGET=rotary_lcd_pcf8574
 make upload TARGET=rotary_lcd_pcf8574 PORT=/dev/ttyACM0
 python3 ../../../pi/bringup/monitor_rotary_lcd.py
@@ -148,7 +150,7 @@ with the angle it applied:
 
 ```text
 GATE OPEN
-GATE state=open angle=90 pulse_us=1500
+GATE state=open angle=180 pulse_us=2000
 
 GATE CLOSE
 GATE state=closed angle=0 pulse_us=1000

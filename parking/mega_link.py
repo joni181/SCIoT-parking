@@ -1,6 +1,6 @@
 """Shared serial transport to the bring-up Mega controller.
 
-`hardware/mega/firmware/rotary_lcd_bringup/mega_controller.c` exposes a single
+`hardware/mega/firmware/mega_controller/mega_controller.c` exposes a single
 USB-serial connection that carries several independent streams at once: NFC
 scans, distance readings, and (as a write) gate open/close commands. Each of
 those needs the same port, so exactly one `MegaLink` owns the connection and
