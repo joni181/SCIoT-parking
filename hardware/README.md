@@ -142,6 +142,14 @@ The A15 reader reports a raw 0-1023 ADC value.  A bare photoresistor must be wir
 as a voltage divider: `5V -> LDR -> A15 -> 10kΩ resistor -> GND`; otherwise A15
 floats and the output has no useful meaning.
 
+To pick `parking.sensors.OccupancySensor`'s threshold, run
+`hardware/pi/bringup/test_photoresistor_threshold.py` and watch the raw value
+(plus running min/max/midpoint) while covering/uncovering the buffer:
+
+```bash
+python3 hardware/pi/bringup/test_photoresistor_threshold.py
+```
+
 ## Servo behavior and power
 
 `mega_controller.c` also drives the Modelcraft RS-2 on D6, commanded over serial
