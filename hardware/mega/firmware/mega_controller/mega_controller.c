@@ -506,7 +506,7 @@ static void lcd_render_minutes(int16_t position) {
     line[index++] = 'n';
     line[index] = '\0';
 
-    lcd_line(0x80, "Duration");
+    lcd_line(0x80, "Park duration");
     lcd_line(0xC0, line);
 }
 
