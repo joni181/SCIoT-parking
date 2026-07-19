@@ -45,6 +45,31 @@ class GateServo(Actuator):
         self._link.send("GATE OPEN" if msg.action == m.GATE_OPEN else "GATE CLOSE")
 
 
+class StatusLed(Actuator):
+    """External LED on Mega D22. Consumes `LotFullCommand` (on when the lot
+    is full - originally a rotary-tick heartbeat, now repurposed).
+
+    Drives the Mega by sending "LED ON" / "LED OFF" over the shared
+    `MegaLink`. With no `link` (simulated/no-hardware runs) this is a no-op.
+    """
+
+    def __init__(self, bus: MessageBus, link: Optional[MegaLink] = None, source: str = "pi/actuator/status_led") -> None:
+        self._bus = bus
+        self._link = link
+        self._source = source
+
+    def start(self) -> None:
+        self._bus.subscribe_message(m.LotFullCommand.TOPIC, self._on_command)
+
+    def stop(self) -> None:
+        ...
+
+    def _on_command(self, msg: m.LotFullCommand) -> None:
+        if self._link is None:
+            return
+        self._link.send("LED ON" if msg.full else "LED OFF")
+
+
 class BufferLed(Actuator):
     """Buffer-slot indicator LED. Consumes `BufferLedCommand` (on / off)."""
 

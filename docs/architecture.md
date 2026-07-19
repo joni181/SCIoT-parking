@@ -71,7 +71,7 @@ wire and run a mixed bag of them uniformly.
 |---|---|---|---|
 | `sensors/` | `Sensor` (a `Component`) | `OccupancySensor`, `NfcReader`, `DurationDial` *(skeletons)*, `DistanceSensor` *(live)* | `SimulatedSensors` *(multi-sensor helper, not one `Sensor`)* |
 | `actuators/` | `Actuator` (a `Component`) | `GateMotor`, `BufferLed`, `VehicleMover` *(skeletons)*; `GateServo` is live | `RecordingActuators` |
-| `dispatching/` | `Dispatcher` (a `Component`) | `PlanDispatcher`; `GateSafetyController` closes the gate on a timer (no motion sensor exists) | `ReactiveGateController` |
+| `dispatching/` | `Dispatcher` (a `Component`) | `PlanDispatcher`; `GateSafetyController` closes the gate on a timer (no motion sensor exists); `LotFullIndicator` drives the status LED | `ReactiveGateController` |
 | `storage/` | `OccupancyStore` / `CustomerStore` / `StateStore` | `InMemoryStore` | `OccupancyTracker` *(implements `OccupancyStore`)* |
 | `problem_generation/` | `ProblemGenerator` | `PddlProblemGenerator` + bus service | — |
 | `planning/` | `Planner` | `ForwardSearchPlanner` + bus service + `domain/domain.pddl` | — |

@@ -11,11 +11,12 @@ run it with no hardware and watch the laptop react over the broker.
 selects the real drivers: `DistanceSensor`, `NfcReader`, `DurationDial`, and
 one `OccupancySensor` per spot in `LIGHT_SENSORS` (buffer B1 + P1/P2/P3, one
 photoresistor each, see `hardware/pinmap.yaml`) are live over that link,
-`GateServo` sends real `GATE OPEN`/`GATE CLOSE` commands over it, and
-`BufferLed`/`VehicleMover` remain inert until their `TODO` hardware loops
-are implemented. There is no gate motion sensor in the
-current hardware; `GateSafetyController` closes the gate on a timer instead
-(see `parking/dispatching/gate_safety.py`).
+`GateServo` sends real `GATE OPEN`/`GATE CLOSE` commands over it, `StatusLed`
+sends real `LED ON`/`LED OFF` commands over it (driven by `LotFullIndicator`
+watching occupancy of every parking spot), and `BufferLed`/`VehicleMover`
+remain inert until their `TODO` hardware loops are implemented. There is no
+gate motion sensor in the current hardware; `GateSafetyController` closes
+the gate on a timer instead (see `parking/dispatching/gate_safety.py`).
 
     python apps/pi_node.py
     PARKING_BROKER_HOST=192.168.0.10 python apps/pi_node.py     # broker on the laptop
@@ -29,15 +30,15 @@ from __future__ import annotations
 import os
 import sys
 import time
-from typing import Optional
+from typing import Optional, Sequence
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from parking.common import load_settings  # noqa: E402
 from parking.common import models as m  # noqa: E402
 from parking.common.messaging import MqttBus  # noqa: E402
-from parking.actuators import BufferLed, GateServo, VehicleMover  # noqa: E402
-from parking.dispatching import GateSafetyController, PlanDispatcher  # noqa: E402
+from parking.actuators import BufferLed, GateServo, StatusLed, VehicleMover  # noqa: E402
+from parking.dispatching import GateSafetyController, LotFullIndicator, PlanDispatcher  # noqa: E402
 from parking.mega_link import MegaLink  # noqa: E402
 from parking.sensors import DistanceSensor, DurationDial, NfcReader, OccupancySensor  # noqa: E402
 from parking.simulation import SimulatedSensors  # noqa: E402
@@ -72,19 +73,22 @@ def _light_threshold(spot_id: str) -> int:
     return int(os.environ.get(f"PARKING_LIGHT_THRESHOLD_{spot_id}", fallback))
 
 
-def pi_components(bus: MqttBus, link: Optional[MegaLink] = None) -> list:
+def pi_components(bus: MqttBus, link: Optional[MegaLink] = None, parking_spots: Sequence[str] = ("P1", "P2", "P3")) -> list:
     """The Pi's always-on Components: actuator drivers + the gate controller.
 
-    The actuator drivers other than the gate are no-ops until real hardware
-    is attached, but the controller and all the bus wiring are live. The gate
-    servo is live too when `link` is given (hardware mode).
+    The actuator drivers other than the gate/status LED are no-ops until real
+    hardware is attached, but the controllers and all the bus wiring are
+    live. The gate servo and status LED are live too when `link` is given
+    (hardware mode).
     """
     return [
         GateServo(bus, link=link),
+        StatusLed(bus, link=link),
         BufferLed(bus),
         VehicleMover(bus),
         PlanDispatcher(bus),
         GateSafetyController(bus),
+        LotFullIndicator(bus, parking_spots),
     ]
 
 
@@ -174,9 +178,10 @@ def main() -> None:
     mega_port = os.environ.get("PARKING_MEGA_PORT")
     link = (MegaLink(port=mega_port) if mega_port else MegaLink()) if hardware_mode else None
 
-    components = pi_components(bus, link=link)
-    # Echo gate commands so the gate's behaviour is visible even with no motor.
+    components = pi_components(bus, link=link, parking_spots=s.parking_spots)
+    # Echo gate/status-LED commands so their behaviour is visible even with no hardware attached.
     bus.subscribe_message(m.GateCommand.TOPIC, lambda msg: print(f"[pi] gate motor -> {msg.action}"))
+    bus.subscribe_message(m.LotFullCommand.TOPIC, lambda msg: print(f"[pi] status LED -> {'on (lot full)' if msg.full else 'off'}"))
     for c in components:
         c.start()
 

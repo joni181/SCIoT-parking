@@ -8,6 +8,8 @@
  * - HC-SR04P ultrasonic ranger: Trig D7/PH4, Echo D24/PA2
  * - Modelcraft RS-2 servo: D6/PH3 PWM signal, commanded over serial with
  *   "GATE OPEN" / "GATE CLOSE" lines (closed on boot; not tied to the rotary)
+ * - D22 status LED: commanded over serial with "LED ON" / "LED OFF" (off on
+ *   boot; lights when every parking spot is occupied, see LotFullIndicator)
  *
  * The controller probes both the supplied Uno/Nano D11-D13 wiring and the
  * Mega's native D50-D52 SPI wiring, then uses the one where reader 1 responds.
@@ -411,6 +413,20 @@ static void gate_set(bool open) {
     uart_puts("\r\n");
 }
 
+/* D22/LED_BIT: originally a rotary-tick heartbeat, now a status LED set
+ * on/off by command ("LED ON" / "LED OFF") - see LotFullIndicator on the
+ * laptop side, which lights it when every parking spot is occupied. */
+static void led_set(bool on) {
+    if (on) {
+        PORTA |= _BV(LED_BIT);
+    } else {
+        PORTA &= (uint8_t)~_BV(LED_BIT);
+    }
+    uart_puts("LED state=");
+    uart_puts(on ? "on" : "off");
+    uart_puts("\r\n");
+}
+
 /* Incoming bytes are captured by ISR, not polled: uart_puts() busy-waits per
  * byte while transmitting (LIGHT/DISTANCE/NFC/ROTARY lines), and during those
  * multi-millisecond windows nothing would otherwise be reading UDR0 - the
@@ -510,11 +526,12 @@ static void lcd_render_minutes(int16_t position) {
     lcd_line(0xC0, line);
 }
 
-/* Same LED-toggle-and-emit-ROTARY-line behavior as the shared
- * publish_position(), but renders the mapped duration instead of calling its
- * lcd_render(ticks) - one LCD render per tick, not two. */
+/* Same emit-ROTARY-line behavior as the shared publish_position(), but
+ * renders the mapped duration instead of calling its lcd_render(ticks) - one
+ * LCD render per tick, not two. D22/LED_BIT is no longer toggled here: it's
+ * repurposed from a rotary-tick heartbeat to the lot-full status LED (see
+ * led_set() / "LED ON"/"LED OFF" below), driven by a command instead. */
 static void controller_publish_position(int16_t position, bool lcd_ready) {
-    PORTA ^= _BV(LED_BIT);
     if (lcd_ready) {
         lcd_render_minutes(position);
     }
@@ -546,6 +563,10 @@ static void gate_handle_line(const char *line) {
         if (parse_uint8(line + SERVO_ANGLE_PREFIX_LEN, &angle)) {
             servo_set_raw_angle(angle);
         }
+    } else if (strcmp(line, "LED ON") == 0) {
+        led_set(true);
+    } else if (strcmp(line, "LED OFF") == 0) {
+        led_set(false);
     }
 }
 
@@ -623,6 +644,7 @@ int main(void) {
     uart_puts(" rotary=D23,D25 light=A12,A13,A14,A15 ultrasonic=D7trig,D24echo servo=D6(GATE cmd)\r\n");
     controller_publish_position(position, lcd_ready);
     gate_set(false); /* closed on boot */
+    led_set(false); /* off on boot */
 
     for (;;) {
         gate_poll_uart();

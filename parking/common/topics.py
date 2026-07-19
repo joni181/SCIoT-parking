@@ -25,6 +25,7 @@ EVT_DISTANCE = f"{ROOT}/events/distance"            # ultrasonic ranger: distanc
 # --- Commands: published by control logic; consumed by actuators (Pi) ---
 CMD_GATE = f"{ROOT}/commands/gate"                  # open / close the gate
 CMD_BUFFER_LED = f"{ROOT}/commands/buffer_led"      # buffer-slot indicator LED on / off
+CMD_LOT_FULL = f"{ROOT}/commands/lot_full"          # status LED: every parking spot occupied
 CMD_VEHICLE_MOVE = f"{ROOT}/commands/vehicle_move"  # move a car between buffer <-> spot
 CMD_PARKING_ASSIGNMENT = f"{ROOT}/commands/parking_assignment"
 CMD_SPOT_DISPLAY = f"{ROOT}/commands/spot_display"

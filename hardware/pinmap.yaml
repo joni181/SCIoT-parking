@@ -12,7 +12,7 @@ controllers:
       D22:
         role: status_led
         direction: output
-        notes: "External LED; used as a rotary/LCD bring-up heartbeat."
+        notes: "External LED (resistor to LED anode from D22, cathode to GND). Originally a rotary/LCD bring-up heartbeat; now commanded over serial with LED ON / LED OFF lines (off by default on boot) and lit by LotFullIndicator when every parking spot is occupied."
       D23:
         role: rotary_clock
         direction: input_pullup

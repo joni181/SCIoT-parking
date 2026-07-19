@@ -60,6 +60,7 @@ Each topic carries one message type (in
 | `parking/events/duration_dial` | sensors (rotary) | storage, problem_gen | `DurationDialEvent` |
 | `parking/events/distance` | sensors (ultrasonic) | viz, control (gate auto-close) | `DistanceEvent` |
 | `parking/commands/gate` | control / dispatcher | actuators (gate) | `GateCommand` |
+| `parking/commands/lot_full` | LotFullIndicator (Pi-local) | actuators (status LED) | `LotFullCommand` |
 | `parking/commands/buffer_led` | control / dispatcher | actuators (LED) | `BufferLedCommand` |
 | `parking/commands/vehicle_move` | dispatcher | actuators (vehicle) | `VehicleMoveCommand` |
 | `parking/commands/parking_assignment` | dispatcher | storage | `ParkingAssignmentCommand` |
@@ -92,6 +93,7 @@ bus.publish_message(m.OccupancyEvent(spot_id="P1", occupied=True))
 | `DurationDialEvent` | `raw_value`, `minutes?` |
 | `DistanceEvent` | `distance_cm?` (`null` = out of range) |
 | `GateCommand` | `action` (`open`/`close`) |
+| `LotFullCommand` | `full` |
 | `BufferLedCommand` | `slot_id`, `on` |
 | `VehicleMoveCommand` | `vehicle_uid`, `from_spot`, `to_spot` |
 | `ParkingAssignmentCommand` | `vehicle_uid`, `buffer_id`, `spot_id` |

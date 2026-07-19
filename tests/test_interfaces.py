@@ -10,8 +10,8 @@ from parking.common import Component
 from parking.common import models as m
 from parking.common.messaging import MemoryBus
 
-from parking.actuators import Actuator, BufferLed, GateMotor, VehicleMover
-from parking.dispatching import Dispatcher, PlanDispatcher
+from parking.actuators import Actuator, BufferLed, GateMotor, StatusLed, VehicleMover
+from parking.dispatching import Dispatcher, LotFullIndicator, PlanDispatcher
 from parking.planning import ForwardSearchPlanner, Planner
 from parking.problem_generation import PddlProblemGenerator, ProblemGenerator
 from parking.sensors import DurationDial, NfcReader, OccupancySensor, Sensor
@@ -30,8 +30,14 @@ def test_sensor_drivers_implement_sensor():
 def test_actuator_drivers_implement_actuator():
     bus = MemoryBus()
     assert isinstance(GateMotor(bus), Actuator)
+    assert isinstance(StatusLed(bus), Actuator)
     assert isinstance(BufferLed(bus), Actuator)
     assert isinstance(VehicleMover(bus), Actuator)
+
+
+def test_lot_full_indicator_implements_component():
+    bus = MemoryBus()
+    assert isinstance(LotFullIndicator(bus, ["P1", "P2", "P3"]), Component)
 
 
 def test_dispatcher_implements_interface():

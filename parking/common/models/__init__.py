@@ -16,6 +16,7 @@ from .messages import (
     DurationDialEvent,
     GateCommand,
     GateMotionEvent,
+    LotFullCommand,
     Message,
     NfcScanEvent,
     OccupancyEvent,
@@ -39,6 +40,7 @@ __all__ = [
     "DistanceEvent",
     # commands
     "GateCommand",
+    "LotFullCommand",
     "BufferLedCommand",
     "VehicleMoveCommand",
     "ParkingAssignmentCommand",

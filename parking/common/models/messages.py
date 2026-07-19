@@ -166,6 +166,21 @@ class GateCommand(Message):
 
 @_register
 @dataclass
+class LotFullCommand(Message):
+    """Whether every configured parking spot is currently occupied.
+
+    Drives the Mega's status LED (D22) so it reads "no new arrival can be
+    accepted right now" rather than its original rotary-tick heartbeat role.
+    """
+
+    TYPE = "lot_full_cmd"
+    TOPIC = topics.CMD_LOT_FULL
+
+    full: bool = False
+
+
+@_register
+@dataclass
 class BufferLedCommand(Message):
     """Turn a buffer-slot indicator LED on or off."""
 

@@ -86,7 +86,7 @@ created under `/home/group4/arduino-backups/` before using it.
 | Device | Mega connection | Notes |
 | --- | --- | --- |
 | Pi link | USB (`/dev/ttyACM0`) | Firmware + serial events |
-| Status LED | D22 | Heartbeat when rotary position changes |
+| Status LED | D22 | Lot-full indicator: `LED ON`/`LED OFF` over serial, off by default. Was a rotary-tick heartbeat before this |
 | Rotary encoder | CLK D23, DT D25, 5V, GND | D27/SW is unused on the current no-click encoder |
 | LCD (`0x27`) | SDA D20, SCL D21, 5V, GND | PCF8574/HD44780-compatible display |
 | RC522 reader 1 | SCK D52, MISO D50, MOSI D51, SS D10, RST D8, 3.3V, GND | IRQ unused; level-shift Mega outputs to 3.3V |
@@ -187,6 +187,30 @@ raw quadrature decode produces). The mapping is duplicated in both places
 (`DIAL_*` constants in `mega_controller.c`, the same-named constructor args
 in `apps/pi_node.py`) - keep them in sync if either changes, since nothing
 enforces that automatically.
+
+## Status LED (lot-full indicator)
+
+D22's external LED, previously the rotary-tick heartbeat, is now commanded
+directly: `LED ON` / `LED OFF` over serial, off by default on boot. The Mega
+replies with a confirmation line the same way the gate does:
+
+```text
+LED ON
+LED state=on
+
+LED OFF
+LED state=off
+```
+
+`parking.dispatching.LotFullIndicator` runs on the Pi (not the laptop, unlike
+most control logic) and watches `OccupancyEvent` for the configured parking
+spots - it's deliberately Pi-local end to end (`OccupancySensor` already
+publishes locally, and `StatusLed` writes to the same local `MegaLink`) so
+the LED keeps working even if the broker/laptop is briefly unreachable. It
+publishes `LotFullCommand(full=True)` only when every parking spot becomes
+occupied, and `full=False` the moment any one frees up - not on every
+reading, so it doesn't flood the bus. `parking.actuators.StatusLed` turns
+that into the serial command.
 
 ## Servo behavior and power
 

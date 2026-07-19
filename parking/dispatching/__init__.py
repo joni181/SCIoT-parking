@@ -10,5 +10,6 @@ commands. The reactive gate rule lives (for now) in `parking.simulation` as
 from .base import Dispatcher
 from .dispatcher import PlanDispatcher
 from .gate_safety import GateSafetyController
+from .lot_full_indicator import LotFullIndicator
 
-__all__ = ["Dispatcher", "PlanDispatcher", "GateSafetyController"]
+__all__ = ["Dispatcher", "PlanDispatcher", "GateSafetyController", "LotFullIndicator"]
