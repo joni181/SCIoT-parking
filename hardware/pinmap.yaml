@@ -85,15 +85,20 @@ controllers:
       - id: photoresistor_a15
         pin: mega.A15
         covers: buffer.B1
+        calibrated: {covered: "~300", empty: "~860", threshold: 600}
       - id: photoresistor_a12
         pin: mega.A12
         covers: parking.P1
+        calibrated: {covered: "~0-5", empty: "~105-112", threshold: 55}
+        notes: "Much narrower dynamic range than the other three sensors; watch for noise/false positives."
       - id: photoresistor_a13
         pin: mega.A13
         covers: parking.P2
+        calibrated: {covered: "~284-305", empty: "~780-787", threshold: 535}
       - id: photoresistor_a14
         pin: mega.A14
         covers: parking.P3
+        calibrated: {covered: "~58-67", empty: "~633-659", threshold: 360}
 
   ultrasonic_ranger:
     model: HC-SR04P

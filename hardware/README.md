@@ -155,11 +155,20 @@ python3 hardware/pi/bringup/test_photoresistor_threshold.py --sensor photoresist
 python3 hardware/pi/bringup/test_photoresistor_threshold.py --sensor photoresistor_a12  # P1
 ```
 
-With B1's wiring, raw readings drop when the buffer is covered (measured
-~300 covered vs. ~860 empty on the current mounting) - `PARKING_LIGHT_THRESHOLD`
-(default `600`) sits in that gap. P1/P2/P3 aren't calibrated yet and use the
-same default until measured. Override per spot, or all of them, if a gap
-turns out different or ambient light shifts things:
+All four sensors read low when covered and high when empty; each has its own
+calibrated default threshold baked into `apps/pi_node.py`'s
+`DEFAULT_LIGHT_THRESHOLDS` (also recorded per-sensor in `pinmap.yaml`):
+
+| Spot | Covered | Empty | Threshold |
+|---|---|---|---|
+| B1 (A15) | ~300 | ~860 | 600 |
+| P1 (A12) | ~0-5 | ~105-112 | 55 |
+| P2 (A13) | ~284-305 | ~780-787 | 535 |
+| P3 (A14) | ~58-67 | ~633-659 | 360 |
+
+P1's whole range is much narrower than the others - watch it for noise/false
+positives. Override per spot, or all of them, if a gap turns out different
+later or ambient light shifts things:
 
 ```bash
 PARKING_LIGHT_THRESHOLD_P1=430 PARKING_SENSORS=hardware python apps/pi_node.py  # just P1

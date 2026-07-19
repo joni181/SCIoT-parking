@@ -51,13 +51,24 @@ LIGHT_SENSORS = {
     "P2": "photoresistor_a13",
     "P3": "photoresistor_a14",
 }
-DEFAULT_LIGHT_THRESHOLD = 600  # sits in B1's calibrated gap (~300 covered, ~860 empty)
+
+# Per-spot midpoint between calibrated empty/covered readings (each mounting
+# is different - see hardware/pinmap.yaml and hardware/README.md):
+#   B1: ~300 covered / ~860 empty   P1: ~0-5 covered / ~105-112 empty
+#   P2: ~284-305 covered / ~780-787 empty   P3: ~58-67 covered / ~633-659 empty
+DEFAULT_LIGHT_THRESHOLDS = {
+    "B1": 600,
+    "P1": 55,
+    "P2": 535,
+    "P3": 360,
+}
 
 
 def _light_threshold(spot_id: str) -> int:
-    """PARKING_LIGHT_THRESHOLD_<spot> overrides PARKING_LIGHT_THRESHOLD (each
-    photoresistor's mounting/wiring calibrates to a different crossover)."""
-    fallback = os.environ.get("PARKING_LIGHT_THRESHOLD", str(DEFAULT_LIGHT_THRESHOLD))
+    """PARKING_LIGHT_THRESHOLD_<spot> overrides PARKING_LIGHT_THRESHOLD, which
+    overrides that spot's calibrated default (each photoresistor's
+    mounting/wiring calibrates to a different crossover)."""
+    fallback = os.environ.get("PARKING_LIGHT_THRESHOLD", str(DEFAULT_LIGHT_THRESHOLDS[spot_id]))
     return int(os.environ.get(f"PARKING_LIGHT_THRESHOLD_{spot_id}", fallback))
 
 
