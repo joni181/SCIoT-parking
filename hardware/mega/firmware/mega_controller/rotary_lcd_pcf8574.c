@@ -181,9 +181,16 @@ static bool lcd_init(void) {
 
 static void lcd_line(uint8_t cursor_command, const char *line) {
     lcd_command(cursor_command);
+    bool ended = false;
     for (uint8_t index = 0; index < 16; ++index) {
-        const char value = line[index] ? line[index] : ' ';
-        lcd_data((uint8_t)value);
+        /* Short-circuits before reading line[index] once the terminator is
+         * seen, so shorter strings never index past their own allocation -
+         * previously this read (and printed) whatever garbage byte happened
+         * to follow the string in memory once past its length. */
+        if (!ended && line[index] == '\0') {
+            ended = true;
+        }
+        lcd_data((uint8_t)(ended ? ' ' : line[index]));
     }
 }
 

@@ -123,9 +123,12 @@ static bool lcd_ping(uint8_t address) {
 
 static void lcd_line(uint8_t cursor_command, const char *line) {
     lcd_write(LCD_TEXT_ADDR, 0x80, cursor_command);
+    bool ended = false;
     for (uint8_t index = 0; index < 16; ++index) {
-        const char value = line[index] ? line[index] : ' ';
-        lcd_write(LCD_TEXT_ADDR, 0x40, (uint8_t)value);
+        if (!ended && line[index] == '\0') {
+            ended = true;
+        }
+        lcd_write(LCD_TEXT_ADDR, 0x40, (uint8_t)(ended ? ' ' : line[index]));
     }
 }
 
