@@ -2,4 +2,5 @@
 -r common.txt
 RPi.GPIO
 spidev
+pyserial          # USB serial transport for the Arduino Mega hardware layer
 # RFID / Grove drivers as needed - see experiments/ (mfrc522, grovepi).

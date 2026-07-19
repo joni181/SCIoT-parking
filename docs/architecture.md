@@ -69,9 +69,9 @@ wire and run a mixed bag of them uniformly.
 
 | Module | Port (`base.py`) | Shipped implementation | Stand-in (simulation) |
 |---|---|---|---|
-| `sensors/` | `Sensor` (a `Component`) | `OccupancySensor`, `GateMotionSensor`, `NfcReader`, `DurationDial` *(skeletons)* | `SimulatedSensors` *(multi-sensor helper, not one `Sensor`)* |
-| `actuators/` | `Actuator` (a `Component`) | `GateMotor`, `BufferLed`, `VehicleMover` *(skeletons)* | `RecordingActuators` |
-| `dispatching/` | `Dispatcher` (a `Component`) | `PlanDispatcher` | `ReactiveGateController` |
+| `sensors/` | `Sensor` (a `Component`) | `OccupancySensor`, `NfcReader`, `DurationDial` *(skeletons)*, `DistanceSensor` *(live)* | `SimulatedSensors` *(multi-sensor helper, not one `Sensor`)* |
+| `actuators/` | `Actuator` (a `Component`) | `GateMotor`, `BufferLed`, `VehicleMover` *(skeletons)*; `GateServo` is live | `RecordingActuators` |
+| `dispatching/` | `Dispatcher` (a `Component`) | `PlanDispatcher`; `GateSafetyController` closes the gate on a timer (no motion sensor exists) | `ReactiveGateController` |
 | `storage/` | `OccupancyStore` / `CustomerStore` / `StateStore` | `InMemoryStore` | `OccupancyTracker` *(implements `OccupancyStore`)* |
 | `problem_generation/` | `ProblemGenerator` | `PddlProblemGenerator` + bus service | — |
 | `planning/` | `Planner` | `ForwardSearchPlanner` + bus service + `domain/domain.pddl` | — |

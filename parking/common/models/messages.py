@@ -139,6 +139,17 @@ class DurationDialEvent(Message):
     minutes: Optional[int] = None  # raw_value mapped to minutes (if interpreted)
 
 
+@_register
+@dataclass
+class DistanceEvent(Message):
+    """A distance reading from the ultrasonic ranger."""
+
+    TYPE = "distance"
+    TOPIC = topics.EVT_DISTANCE
+
+    distance_cm: Optional[float] = None  # None means out of range / no echo
+
+
 # ===========================================================================
 # Commands - published by control logic, consumed by actuators on the Pi.
 # ===========================================================================

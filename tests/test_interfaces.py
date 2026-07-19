@@ -14,7 +14,7 @@ from parking.actuators import Actuator, BufferLed, GateMotor, VehicleMover
 from parking.dispatching import Dispatcher, PlanDispatcher
 from parking.planning import ForwardSearchPlanner, Planner
 from parking.problem_generation import PddlProblemGenerator, ProblemGenerator
-from parking.sensors import DurationDial, GateMotionSensor, NfcReader, OccupancySensor, Sensor
+from parking.sensors import DurationDial, NfcReader, OccupancySensor, Sensor
 from parking.storage import Customer, InMemoryStore, OccupancyStore, StateStore, StorageService
 from parking.simulation import OccupancyTracker, ReactiveGateController, RecordingActuators
 from parking.visualization import ConsoleLotView, DashboardModel, DashboardView, View
@@ -23,7 +23,6 @@ from parking.visualization import ConsoleLotView, DashboardModel, DashboardView,
 def test_sensor_drivers_implement_sensor():
     bus = MemoryBus()
     assert isinstance(OccupancySensor(bus, "P1"), Sensor)
-    assert isinstance(GateMotionSensor(bus), Sensor)
     assert isinstance(NfcReader(bus), Sensor)
     assert isinstance(DurationDial(bus), Sensor)
 

@@ -24,15 +24,55 @@ from parking.storage import (
 )
 
 
-def _system(spots=("P1", "P2", "P3")):
+class ManualTimer:
+    """Test double for `threading.Timer`: fires only when `.fire()` is called."""
+
+    def __init__(self, delay, callback):
+        self.delay = delay
+        self.callback = callback
+        self.cancelled = False
+
+    def start(self):
+        pass
+
+    def cancel(self):
+        self.cancelled = True
+
+    def fire(self):
+        if not self.cancelled:
+            self.callback()
+
+
+class ManualTimerFactory:
+    """Captures every `GateSafetyController` close-delay timer it creates, so
+    a test can simulate "the delay elapsed" deterministically via `fire_latest()`
+    instead of sleeping on the real 5-second default.
+    """
+
+    def __init__(self):
+        self.timers = []
+
+    def __call__(self, delay, callback):
+        timer = ManualTimer(delay, callback)
+        self.timers.append(timer)
+        return timer
+
+    def fire_latest(self):
+        self.timers[-1].fire()
+
+
+def _system(spots=("P1", "P2", "P3"), timers=None):
     bus = MemoryBus()
     store = InMemoryStore()
+    gate_safety = (
+        GateSafetyController(bus, timer_factory=timers) if timers is not None else GateSafetyController(bus)
+    )
     components = [
         StorageService(bus, store),
         PlannerService(bus, ForwardSearchPlanner()),
         ProblemGenerationService(bus, store, PddlProblemGenerator(spots=spots)),
         PlanDispatcher(bus),
-        GateSafetyController(bus),
+        gate_safety,
     ]
     actuators = RecordingActuators(bus)
     for component in components:
@@ -88,7 +128,8 @@ def test_expected_duration_influences_spot_distance():
 
 
 def test_full_arrival_and_checkout_cycle_waits_for_sensor_confirmation():
-    bus, store, actuators = _system()
+    timers = ManualTimerFactory()
+    bus, store, actuators = _system(timers=timers)
     _admit(bus)
 
     assert _customer(store, "CAR1").status == ENTRY_AUTHORIZED
@@ -102,7 +143,9 @@ def test_full_arrival_and_checkout_cycle_waits_for_sensor_confirmation():
     assert _customer(store, "CAR1").status != PARKED
     assert [(x.from_spot, x.to_spot) for x in actuators.vehicle_moves] == [("B1", "P1")]
 
-    bus.publish_message(m.GateMotionEvent(present=False))
+    # No motion sensor exists; the gate closes once its delay elapses with a
+    # clear ultrasonic reading.
+    timers.fire_latest()
     assert actuators.gate_state == m.GATE_CLOSE
     bus.publish_message(m.OccupancyEvent(spot_id="B1", occupied=False))
     bus.publish_message(m.OccupancyEvent(spot_id="P1", occupied=True))
@@ -121,10 +164,14 @@ def test_full_arrival_and_checkout_cycle_waits_for_sensor_confirmation():
     assert _customer(store, "CAR1").assigned_spot == ""
     assert actuators.gate_state == m.GATE_OPEN
 
+    # GateMotionEvent still drives StorageService's departure completion
+    # (there's just no real motion sensor to source it from yet); it's
+    # unrelated to gate closing now.
     bus.publish_message(m.GateMotionEvent(present=True))
     bus.publish_message(m.OccupancyEvent(spot_id="B1", occupied=False))
     bus.publish_message(m.GateMotionEvent(present=False))
     assert _customer(store, "CAR1").status == DEPARTED
+    timers.fire_latest()
     assert actuators.gate_state == m.GATE_CLOSE
 
 

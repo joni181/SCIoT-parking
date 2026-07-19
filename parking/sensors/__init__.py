@@ -8,6 +8,6 @@ event from `parking.common.models`. `SimulatedSensors` in `parking.simulation`
 is the hardware-free stand-in used by the tests and the demo.
 """
 from .base import Sensor
-from .drivers import DurationDial, GateMotionSensor, NfcReader, OccupancySensor
+from .drivers import DistanceSensor, DurationDial, NfcReader, OccupancySensor
 
-__all__ = ["Sensor", "OccupancySensor", "GateMotionSensor", "NfcReader", "DurationDial"]
+__all__ = ["Sensor", "OccupancySensor", "NfcReader", "DurationDial", "DistanceSensor"]

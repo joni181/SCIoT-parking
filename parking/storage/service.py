@@ -21,6 +21,17 @@ from .base import (
 )
 
 
+def _vehicle_uid_for(card_uid: str) -> str:
+    """A vehicle identifier that's always a valid PDDL symbol.
+
+    RFID card UIDs are raw hex, so they start with a digit as often as not,
+    but `_symbol` in `pddl_generator.py` requires a leading letter. Prefix
+    only when needed, so already-valid IDs (as used throughout the tests)
+    round-trip unchanged.
+    """
+    return card_uid if card_uid[:1].isalpha() else f"v{card_uid}"
+
+
 class StorageService:
     """Convert raw observations and planner commands into vehicle lifecycles."""
 
@@ -56,10 +67,10 @@ class StorageService:
     def _on_nfc(self, msg: m.NfcScanEvent) -> None:
         customer = self._store.customer_for(msg.uid)
         if customer is None:
-            customer = Customer(uid=msg.uid, vehicle_uid=msg.uid)
+            customer = Customer(uid=msg.uid, vehicle_uid=_vehicle_uid_for(msg.uid))
 
         if msg.reader == m.READER_GATE:
-            customer.vehicle_uid = customer.vehicle_uid or msg.uid
+            customer.vehicle_uid = customer.vehicle_uid or _vehicle_uid_for(msg.uid)
             customer.expected_minutes = self._latest_duration
             customer.ready_for_pickup = False
             customer.checkout_requested = False

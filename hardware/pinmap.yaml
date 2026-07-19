@@ -1,0 +1,160 @@
+# Canonical physical wiring map.  Update this file before attaching hardware.
+version: 1
+
+controllers:
+  mega_adk:
+    board: Arduino Mega ADK R3 (ATmega2560)
+    transport:
+      preferred: /dev/serial/by-id/usb-Arduino__www.arduino.cc__Arduino_Mega_ADK_6493633393635170A1D2-if00
+      fallback: /dev/ttyACM0
+      baud: 9600
+    pins:
+      D22:
+        role: status_led
+        direction: output
+        notes: "External LED; used as a rotary/LCD bring-up heartbeat."
+      D23:
+        role: rotary_clock
+        direction: input_pullup
+        mega_port: PA1
+      D25:
+        role: rotary_dt
+        direction: input_pullup
+        mega_port: PA3
+      D27:
+        role: rotary_switch_optional
+        direction: unused
+        mega_port: PA5
+        notes: "The module labels this lead SW, but the attached encoder has no usable mechanical press. Do not depend on it."
+      D7:
+        role: ultrasonic_trig
+        direction: output
+        mega_port: PH4
+      D24:
+        role: ultrasonic_echo
+        direction: input
+        mega_port: PA2
+      D6:
+        role: servo_signal
+        direction: timer4_pwm_output
+        mega_port: PH3/OC4A
+        notes: "Modelcraft RS-2: 20ms control period, 1-2ms pulse. Commanded over serial with GATE OPEN / GATE CLOSE lines (closed=0deg, open=180deg, closed by default on boot); no longer tied to the rotary encoder. Angles calibrated live via SERVO ANGLE=<n>/servo_test.c against the physical gate."
+    power:
+      5V: "Use the sensor/module VCC requirement; all controller and sensor grounds must be common."
+      GND: common_ground
+
+  lcd_i2c_pcf8574:
+    model: "HD44780-compatible character LCD with PCF8574 I2C backpack"
+    detected_i2c_address: 0x27
+    protocol: pcf8574_4bit
+    active:
+      mode: hardware_i2c
+      sda: mega.D20
+      scl: mega.D21
+      notes: "Detected by the Mega I2C scanner; current connected display."
+
+  rc522_readers:
+    protocol: auto_detect_spi
+    shared:
+      reset: mega.D8
+    supported_buses:
+      uno_compatible_software_spi:
+        sck: mega.D13
+        miso: mega.D12
+        mosi: mega.D11
+      mega_native_spi:
+        sck: mega.D52
+        miso: mega.D50
+        mosi: mega.D51
+    readers:
+      - id: nfc_reader_1
+        ss: mega.D10
+        expected_connected: true
+      - id: nfc_reader_2
+        ss: mega.D9
+        expected_connected: false
+    power: 3.3V
+    safety: "Level-shift Mega 5V outputs (MOSI, SCK, SS, RST) down to 3.3V before the RC522."
+
+  photoresistors:
+    interface: adc
+    output: raw_0_to_1023
+    wiring: "For a bare LDR: 5V -> LDR -> A15/A12/A13/A14 -> 10kΩ resistor -> GND (reversing the divider reverses that sensor's reading direction)."
+    notes: "One photoresistor per spot; threshold/direction are calibrated per sensor (see parking.sensors.OccupancySensor), not shared - each mounting/wiring can differ. Use hardware/pi/bringup/test_photoresistor_threshold.py to watch a given spot empty vs. covered."
+    sensors:
+      - id: photoresistor_a15
+        pin: mega.A15
+        covers: buffer.B1
+        calibrated: {covered: "~300", empty: "~860", threshold: 600}
+      - id: photoresistor_a12
+        pin: mega.A12
+        covers: parking.P1
+        calibrated: {covered: "~0-5", empty: "~105-112", threshold: 55}
+        notes: "Much narrower dynamic range than the other three sensors; watch for noise/false positives."
+      - id: photoresistor_a13
+        pin: mega.A13
+        covers: parking.P2
+        calibrated: {covered: "~284-305", empty: "~780-787", threshold: 535}
+      - id: photoresistor_a14
+        pin: mega.A14
+        covers: parking.P3
+        calibrated: {covered: "~58-67", empty: "~633-659", threshold: 360}
+
+  ultrasonic_ranger:
+    model: HC-SR04P
+    trig_pin: mega.D7
+    echo_pin: mega.D24
+    interface: two_wire_trigger_echo
+    power: 5V
+    ground: mega.GND
+    output: distance_cm
+    notes: "HC-SR04P has separate Trig/Echo lines (unlike the earlier Grove ranger's shared SIG pin); expected range is 2-350cm. Also tolerates 3.3V power/logic if needed."
+
+  modelcraft_rs2_servo:
+    pin: mega.D6
+    interface: timer4_pwm
+    control: "20ms period; 1000-2000us pulse maps 0-180 degrees"
+    input: serial_gate_command
+    gate_angles:
+      closed_degrees: 0
+      open_degrees: 180
+    serial_protocol: "Pi -> Mega text lines \"GATE OPEN\" / \"GATE CLOSE\"; Mega replies \"GATE state=<open|closed> angle=<deg> pulse_us=<n>\". Closed on boot."
+    power: "Separate regulated 4.8-6V supply; connect its GND to Mega GND. Do not power it from the Mega USB 5V rail."
+
+  legacy_grove_lcd_rgb_v4:
+    model: Grove LCD RGB Backlight v4.0
+    text_i2c_address: 0x3E
+    rgb_i2c_address: 0x62
+    legacy_wiring:
+      mode: software_i2c
+      sda: mega.A0
+      scl: mega.A1
+      notes: "Historical only; A0/A1 are not native Mega I2C pins."
+
+devices:
+  rotary_encoder:
+    controller: mega_adk
+    connections:
+      clock: mega.D23
+      dt: mega.D25
+      switch: mega.D27 # optional; unused by the current no-click encoder
+      plus: mega.5V
+      ground: mega.GND
+  lcd_i2c_pcf8574:
+    controller: mega_adk
+    connections:
+      active_sda: mega.D20
+      active_scl: mega.D21
+      vcc: mega.5V
+      ground: mega.GND
+  modelcraft_rs2_servo:
+    controller: mega_adk
+    connections:
+      signal: mega.D6
+      power: external_4.8_to_6V
+      ground: common_with_mega.GND
+
+reserved:
+  mega:
+    - "Keep D20/D21 reserved for native I2C devices."
+    - "Allocate new digital devices by updating this map; do not embed pin numbers in parking/ modules."
