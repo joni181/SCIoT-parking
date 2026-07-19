@@ -18,7 +18,7 @@ instead (see `parking/dispatching/gate_safety.py`).
     python apps/pi_node.py
     PARKING_BROKER_HOST=192.168.0.10 python apps/pi_node.py     # broker on the laptop
     PARKING_SENSORS=hardware python apps/pi_node.py             # on the real Pi
-    PARKING_MEGA_PORT=/dev/ttyACM1 PARKING_SENSORS=hardware python apps/pi_node.py  # override the port
+    PARKING_MEGA_PORT=/dev/ttyACM0 PARKING_SENSORS=hardware python apps/pi_node.py  # override the port
 """
 from __future__ import annotations
 

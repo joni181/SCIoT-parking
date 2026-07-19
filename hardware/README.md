@@ -40,8 +40,15 @@ Then run the node that changed:
 
 ```bash
 pip install -r requirements/pi.txt         # only if requirements changed
-PARKING_SENSORS=hardware python apps/pi_node.py
+PARKING_SENSORS=hardware python apps/pi_node.py                                # default: stable by-id path
+PARKING_MEGA_PORT=/dev/ttyACM1 PARKING_SENSORS=hardware python apps/pi_node.py  # override the port
 ```
+
+`MegaLink` defaults to the Mega's stable `/dev/serial/by-id/...` path (keyed to
+its USB serial number), so it keeps working across reflashes/replugs even as
+the `/dev/ttyACM<N>` number changes. Set `PARKING_MEGA_PORT` only if that
+default doesn't resolve correctly (different board, udev quirk, etc.) - check
+`ls -la /dev/ttyACM*` for the actual device.
 
 **On the laptop**, in two terminals:
 
