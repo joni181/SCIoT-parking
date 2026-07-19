@@ -8,12 +8,12 @@ Sensors are the one piece that needs real hardware. By default this runs the
 hardware-free `SimulatedSensors` and plays a short scripted scenario, so you can
 run it with no hardware and watch the laptop react over the broker.
 `PARKING_SENSORS=hardware` opens a `MegaLink` to the Mega's serial port and
-selects the real drivers: `DistanceSensor`, `NfcReader`, and one
-`OccupancySensor` per spot in `LIGHT_SENSORS` (buffer B1 + P1/P2/P3, one
+selects the real drivers: `DistanceSensor`, `NfcReader`, `DurationDial`, and
+one `OccupancySensor` per spot in `LIGHT_SENSORS` (buffer B1 + P1/P2/P3, one
 photoresistor each, see `hardware/pinmap.yaml`) are live over that link,
 `GateServo` sends real `GATE OPEN`/`GATE CLOSE` commands over it, and
-`DurationDial`/`BufferLed`/`VehicleMover` remain inert until their `TODO`
-hardware loops are implemented. There is no gate motion sensor in the
+`BufferLed`/`VehicleMover` remain inert until their `TODO` hardware loops
+are implemented. There is no gate motion sensor in the
 current hardware; `GateSafetyController` closes the gate on a timer instead
 (see `parking/dispatching/gate_safety.py`).
 
@@ -140,7 +140,7 @@ def run_hardware_sensors(bus: MqttBus, link: MegaLink) -> None:
     ] + [
         NfcReader(bus, link, reader=m.READER_GATE, firmware_reader=1),
         NfcReader(bus, link, reader=m.READER_CHECKOUT, firmware_reader=2),
-        DurationDial(bus),
+        DurationDial(bus, link),
         DistanceSensor(bus, link),
     ]
     for sensor in sensors:
@@ -151,9 +151,9 @@ def run_hardware_sensors(bus: MqttBus, link: MegaLink) -> None:
     link.add_listener(lambda line: print(f"[mega] {line}") if line.startswith("GATE ") else None)
     link.start()
     print(
-        "[pi] hardware sensors started; distance ranger, NFC readers, and all "
-        "4 photoresistors (B1/P1/P2/P3) are live over serial; duration dial "
-        "remains a TODO skeleton emitting no events. Ctrl-C to stop."
+        "[pi] hardware sensors started; distance ranger, NFC readers, duration "
+        "dial, and all 4 photoresistors (B1/P1/P2/P3) are live over serial. "
+        "Ctrl-C to stop."
     )
     try:
         while True:

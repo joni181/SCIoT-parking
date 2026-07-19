@@ -176,23 +176,56 @@ class NfcReader(Sensor):
         self._bus.publish_message(m.NfcScanEvent(uid=uid, reader=self._reader, source=self._source))
 
 
-class DurationDial(Sensor):
-    """Rotary-angle dial for expected parking duration -> `DurationDialEvent`.
+_ROTARY_LINE = re.compile(r"^ROTARY ticks=(?P<ticks>-?\d+)$")
 
-    Raw Grove read: see experiments/rotary-sensor-grove-pi.py.
+
+class DurationDial(Sensor):
+    """Rotary encoder -> `DurationDialEvent` (expected parking duration).
+
+    The Mega firmware (`hardware/mega/firmware/mega_controller/mega_controller.c`)
+    emits `ROTARY ticks=<signed n>` once per detent - `ticks` is an unbounded
+    count relative to boot (not an absolute angle; the encoder has no home
+    position). Each tick shifts the selected duration by `minutes_per_tick`
+    away from `default_minutes`, clamped to [`min_minutes`, `max_minutes`].
+    `parking.problem_generation.PddlProblemGenerator` only cares about whole
+    hours (`expected_minutes // 60`) for spot selection, so exact granularity
+    isn't critical - the defaults just need to feel reasonable to turn.
     """
 
-    def __init__(self, bus: MessageBus, source: str = "pi/sensor/rotary") -> None:
+    def __init__(
+        self,
+        bus: MessageBus,
+        link: Optional[MegaLink] = None,
+        default_minutes: int = 30,
+        minutes_per_tick: int = 5,
+        min_minutes: int = 5,
+        max_minutes: int = 180,
+        source: str = "pi/sensor/rotary",
+    ) -> None:
         self._bus = bus
+        self._link = link
+        self._default_minutes = default_minutes
+        self._minutes_per_tick = minutes_per_tick
+        self._min_minutes = min_minutes
+        self._max_minutes = max_minutes
         self._source = source
 
     def start(self) -> None:
-        # TODO: poll the rotary angle pin; map the raw value to minutes and call
-        #       self._publish(raw_value, minutes) when the dial settles.
-        ...
+        if self._link is not None:
+            self._link.add_listener(self._on_line)
 
     def stop(self) -> None:
-        ...
+        if self._link is not None:
+            self._link.remove_listener(self._on_line)
+
+    def _on_line(self, line: str) -> None:
+        match = _ROTARY_LINE.match(line)
+        if not match:
+            return
+        ticks = int(match.group("ticks"))
+        minutes = self._default_minutes + ticks * self._minutes_per_tick
+        minutes = max(self._min_minutes, min(self._max_minutes, minutes))
+        self._publish(raw_value=ticks, minutes=minutes)
 
     def _publish(self, raw_value: int, minutes: Optional[int] = None) -> None:
         self._bus.publish_message(
