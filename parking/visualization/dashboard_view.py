@@ -121,7 +121,7 @@ def create_dashboard_app(source: DashboardSource, demo_controller: DemoControlle
         ) from exc
 
     assets = Path(__file__).with_name("assets")
-    app = Dash(__name__, assets_folder=str(assets), title="LIDL Parking Control")
+    app = Dash(__name__, assets_folder=str(assets), title="LIDL Parking Control", update_title=None)
     demo_panel = _demo_layout(html, dcc, demo_controller) if demo_controller else None
 
     def heading(title, tag):
