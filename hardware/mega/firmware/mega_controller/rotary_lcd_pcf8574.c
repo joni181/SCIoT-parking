@@ -187,6 +187,7 @@ static void lcd_line(uint8_t cursor_command, const char *line) {
     }
 }
 
+#ifndef MEGA_CONTROLLER_LIBRARY
 static void lcd_render(int16_t position) {
     char line2[] = "Ticks: +0000";
     uint16_t magnitude = (position < 0) ? (uint16_t)(-position) : (uint16_t)position;
@@ -203,6 +204,7 @@ static void lcd_render(int16_t position) {
     lcd_line(0x80, "Rotary angle");
     lcd_line(0xC0, line2);
 }
+#endif
 
 static uint8_t rotary_sample(void) {
     uint8_t state = 0;
@@ -215,6 +217,7 @@ static uint8_t rotary_sample(void) {
     return state;
 }
 
+#ifndef MEGA_CONTROLLER_LIBRARY
 static void publish_position(int16_t position, bool lcd_ready) {
     PORTA ^= _BV(LED_BIT);
     if (lcd_ready) {
@@ -225,7 +228,6 @@ static void publish_position(int16_t position, bool lcd_ready) {
     uart_puts("\r\n");
 }
 
-#ifndef MEGA_CONTROLLER_LIBRARY
 int main(void) {
     static const int8_t transition[16] = {
         0, -1, 1, 0,

@@ -510,15 +510,17 @@ static void lcd_render_minutes(int16_t position) {
     lcd_line(0xC0, line);
 }
 
-/* publish_position() (shared with the plain rotary+LCD bring-up target)
- * renders raw ticks; the full controller overwrites that with the mapped
- * duration immediately after, so the LCD reflects what the Pi will actually
- * use rather than an internal tick count. */
+/* Same LED-toggle-and-emit-ROTARY-line behavior as the shared
+ * publish_position(), but renders the mapped duration instead of calling its
+ * lcd_render(ticks) - one LCD render per tick, not two. */
 static void controller_publish_position(int16_t position, bool lcd_ready) {
-    publish_position(position, lcd_ready);
+    PORTA ^= _BV(LED_BIT);
     if (lcd_ready) {
         lcd_render_minutes(position);
     }
+    uart_puts("ROTARY ticks=");
+    uart_put_i16(position);
+    uart_puts("\r\n");
 }
 
 static void servo_set_raw_angle(uint8_t angle) {
