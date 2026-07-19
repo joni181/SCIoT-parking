@@ -4,7 +4,7 @@
  * Keeps the PCF8574 LCD + rotary behavior and adds:
  * - RC522 reader 1: SCK D13, MISO D12, MOSI D11, SS D10, RST D8
  * - RC522 reader 2: shared SCK/MISO/MOSI/RST, SS D9 (optional)
- * - Photoresistor: A15 / ADC15
+ * - Photoresistors: A15/ADC15 (buffer B1), A12/A13/A14 (P1/P2/P3)
  * - HC-SR04P ultrasonic ranger: Trig D7/PH4, Echo D24/PA2
  * - Modelcraft RS-2 servo: D6/PH3 PWM signal, commanded over serial with
  *   "GATE OPEN" / "GATE CLOSE" lines (closed on boot; not tied to the rotary)
@@ -302,7 +302,17 @@ static uint16_t adc_read(uint8_t channel) {
     return ADC;
 }
 
-static void publish_light(uint16_t raw) {
+/* One photoresistor per buffer/parking spot: A15=buffer B1, A12-A14=P1-P3. */
+#define LIGHT_SENSOR_COUNT 4
+static const uint8_t light_channels[LIGHT_SENSOR_COUNT] = {15, 12, 13, 14};
+static const char *const light_labels[LIGHT_SENSOR_COUNT] = {
+    "photoresistor_a15",
+    "photoresistor_a12",
+    "photoresistor_a13",
+    "photoresistor_a14",
+};
+
+static void publish_light(const char *label, uint16_t raw) {
     char digits[4];
     uint8_t count = 0;
     do {
@@ -310,7 +320,9 @@ static void publish_light(uint16_t raw) {
         raw /= 10;
     } while (raw && count < sizeof(digits));
 
-    uart_puts("LIGHT sensor=photoresistor_a15 raw=");
+    uart_puts("LIGHT sensor=");
+    uart_puts(label);
+    uart_puts(" raw=");
     while (count) {
         uart_putc(digits[--count]);
     }
@@ -520,7 +532,7 @@ int main(void) {
 
     uart_puts("READY controller=mega lcd=");
     uart_puts(lcd_ready ? "pcf8574-ready" : "not-found");
-    uart_puts(" rotary=D23,D25 light=A15 ultrasonic=D7trig,D24echo servo=D6(GATE cmd)\r\n");
+    uart_puts(" rotary=D23,D25 light=A12,A13,A14,A15 ultrasonic=D7trig,D24echo servo=D6(GATE cmd)\r\n");
     publish_position(position, lcd_ready);
     gate_set(false); /* closed on boot */
 
@@ -544,7 +556,9 @@ int main(void) {
 
         if (++light_timer >= 500) {
             light_timer = 0;
-            publish_light(adc_read(15));
+            for (uint8_t sensor = 0; sensor < LIGHT_SENSOR_COUNT; ++sensor) {
+                publish_light(light_labels[sensor], adc_read(light_channels[sensor]));
+            }
         }
 
         if (++nfc_timer >= 100) {

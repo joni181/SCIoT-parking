@@ -27,25 +27,29 @@ from ..mega_link import MegaLink
 from .base import Sensor
 
 
-_LIGHT_LINE = re.compile(r"^LIGHT sensor=\S+ raw=(?P<raw>\d+)$")
+_LIGHT_LINE = re.compile(r"^LIGHT sensor=(?P<sensor>\S+) raw=(?P<raw>\d+)$")
 
 
 class OccupancySensor(Sensor):
     """Photoresistor over one parking/buffer spot -> `OccupancyEvent`.
 
     The Mega firmware (`hardware/mega/firmware/mega_controller/mega_controller.c`)
-    prints `LIGHT sensor=photoresistor_a15 raw=<0-1023>` roughly twice a
-    second. Only one photoresistor is wired up right now - A15, mounted over
-    the buffer B1 (see `hardware/pinmap.yaml`) - so only one real instance of
-    this class should be constructed against hardware today; every reading is
-    that one sensor, there's no per-spot identifier in the line itself.
+    prints one `LIGHT sensor=<label> raw=<0-1023>` line per photoresistor
+    (`photoresistor_a15`=buffer B1, `photoresistor_a12/a13/a14`=P1/P2/P3)
+    roughly twice a second. `sensor_label` picks which one this instance
+    listens for - every `OccupancySensor` sees every `LIGHT` line over the
+    shared `MegaLink`, so this filter is what keeps spots from reading each
+    other's sensor.
 
-    `threshold`/`occupied_below_threshold` need calibrating against the actual
-    mounting: whether a lower or higher raw ADC value means "something is
-    blocking the light" depends on which way the LDR voltage divider is wired
-    (see pinmap.yaml's wiring note), and the exact crossover point depends on
-    ambient light. Watch a few `LIGHT ...` readings with the spot empty vs.
-    covered and set both to match what you actually observe.
+    `threshold`/`occupied_below_threshold` need calibrating per sensor against
+    its actual mounting: whether a lower or higher raw ADC value means
+    "something is blocking the light" depends on which way that spot's LDR
+    voltage divider is wired (see pinmap.yaml's wiring note), and the exact
+    crossover point depends on ambient light and the mounting position - they
+    are not expected to be the same across spots. Watch a few `LIGHT ...`
+    readings for the specific sensor with the spot empty vs. covered (see
+    `hardware/pi/bringup/test_photoresistor_threshold.py`) and set both to
+    match what you actually observe.
     """
 
     def __init__(
@@ -53,6 +57,7 @@ class OccupancySensor(Sensor):
         bus: MessageBus,
         spot_id: str,
         link: Optional[MegaLink] = None,
+        sensor_label: str = "photoresistor_a15",
         threshold: int = 512,
         occupied_below_threshold: bool = True,
         source: str = "pi/sensor/light",
@@ -60,6 +65,7 @@ class OccupancySensor(Sensor):
         self._bus = bus
         self._spot_id = spot_id
         self._link = link
+        self._sensor_label = sensor_label
         self._threshold = threshold
         self._occupied_below_threshold = occupied_below_threshold
         self._source = f"{source}/{spot_id}"
@@ -74,7 +80,7 @@ class OccupancySensor(Sensor):
 
     def _on_line(self, line: str) -> None:
         match = _LIGHT_LINE.match(line)
-        if not match:
+        if not match or match.group("sensor") != self._sensor_label:
             return
         raw = int(match.group("raw"))
         below = raw < self._threshold

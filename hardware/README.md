@@ -91,7 +91,7 @@ created under `/home/group4/arduino-backups/` before using it.
 | LCD (`0x27`) | SDA D20, SCL D21, 5V, GND | PCF8574/HD44780-compatible display |
 | RC522 reader 1 | SCK D52, MISO D50, MOSI D51, SS D10, RST D8, 3.3V, GND | IRQ unused; level-shift Mega outputs to 3.3V |
 | RC522 reader 2 | Shared SPI/RST; SS D9, 3.3V, GND | Optional; not currently connected |
-| Photoresistor | A15 | Use the documented LDR + 10kΩ divider |
+| Photoresistors | A15 (B1), A12 (P1), A13 (P2), A14 (P3) | Same LDR + 10kΩ divider per spot; each calibrates independently |
 | HC-SR04P ultrasonic ranger | Trig D7, Echo D24, 5V, GND | Separate trigger and echo signals |
 | Modelcraft RS-2 servo | Signal D6 | Power from a separate regulated 4.8-6V supply; join its GND to Mega GND. Commanded over serial (`GATE OPEN`/`GATE CLOSE`), closed by default |
 
@@ -113,21 +113,24 @@ GrovePi devices, and Pi-native SPI/I2C devices plug-and-play additions.
 
 `parking/mega_link.py`'s `MegaLink` is that adapter: it owns the one Mega serial
 port and fans each line out to every registered listener, since distance
-readings, NFC scans, and (as a write) gate commands all share the same
-connection. `parking/sensors/drivers.py`'s `DistanceSensor` and `NfcReader`
-listen on it and republish `DistanceEvent` / `NfcScanEvent`;
-`parking/actuators/drivers.py`'s `GateServo` writes `GATE OPEN` / `GATE CLOSE`
-to it. The remaining drivers in those modules (light, motion, duration dial,
-buffer LED, vehicle move) still need the same treatment.
+readings, NFC scans, light readings, and (as a write) gate commands all share
+the same connection. `parking/sensors/drivers.py`'s `DistanceSensor`,
+`NfcReader`, and `OccupancySensor` listen on it and republish `DistanceEvent`
+/ `NfcScanEvent` / `OccupancyEvent`; `parking/actuators/drivers.py`'s
+`GateServo` writes `GATE OPEN` / `GATE CLOSE` to it. The remaining drivers in
+those modules (motion, duration dial, buffer LED, vehicle move) still need
+the same treatment.
 
 ## NFC + photoresistor controller
 
-`mega_controller.c` combines the active LCD/rotary behavior with two RC522 reader
-slots and the A15 photoresistor.  It emits the following serial contract:
+`mega_controller.c` combines the active LCD/rotary behavior with two RC522
+reader slots and four photoresistors (A15/A12/A13/A14, one per buffer/parking
+spot). It emits the following serial contract:
 
 ```text
 NFC reader=1 uid=DEADBEEF
 LIGHT sensor=photoresistor_a15 raw=512
+LIGHT sensor=photoresistor_a12 raw=340
 ```
 
 Build it with `make TARGET=mega_controller`.  Reader 1 uses SS D10; reader 2 uses
@@ -138,25 +141,29 @@ D52 SCK), then selects the bus where reader 1 responds.
 The RC522 is a 3.3V device.  Give it 3.3V power and use 5V-to-3.3V level shifting
 on Mega outputs MOSI, SCK, SS, and RST before uploading/running the controller.
 
-The A15 reader reports a raw 0-1023 ADC value.  A bare photoresistor must be wired
-as a voltage divider: `5V -> LDR -> A15 -> 10kΩ resistor -> GND`; otherwise A15
-floats and the output has no useful meaning.
+Each reader reports a raw 0-1023 ADC value.  A bare photoresistor must be wired
+as a voltage divider: `5V -> LDR -> A<pin> -> 10kΩ resistor -> GND`; otherwise
+the pin floats and the output has no useful meaning.
 
-To pick `parking.sensors.OccupancySensor`'s threshold, run
-`hardware/pi/bringup/test_photoresistor_threshold.py` and watch the raw value
-(plus running min/max/midpoint) while covering/uncovering the buffer:
+To pick `parking.sensors.OccupancySensor`'s threshold for a given spot, run
+`hardware/pi/bringup/test_photoresistor_threshold.py --sensor <label>` and
+watch the raw value (plus running min/max/midpoint) while covering/uncovering
+that spot - each sensor's threshold is calibrated independently:
 
 ```bash
-python3 hardware/pi/bringup/test_photoresistor_threshold.py
+python3 hardware/pi/bringup/test_photoresistor_threshold.py --sensor photoresistor_a15  # B1
+python3 hardware/pi/bringup/test_photoresistor_threshold.py --sensor photoresistor_a12  # P1
 ```
 
-With this wiring, raw readings drop when the buffer is covered (measured
+With B1's wiring, raw readings drop when the buffer is covered (measured
 ~300 covered vs. ~860 empty on the current mounting) - `PARKING_LIGHT_THRESHOLD`
-(default `600`) sits in that gap. Re-run this script and pass a new value if
-ambient light shifts enough to move the gap:
+(default `600`) sits in that gap. P1/P2/P3 aren't calibrated yet and use the
+same default until measured. Override per spot, or all of them, if a gap
+turns out different or ambient light shifts things:
 
 ```bash
-PARKING_LIGHT_THRESHOLD=650 PARKING_SENSORS=hardware python apps/pi_node.py
+PARKING_LIGHT_THRESHOLD_P1=430 PARKING_SENSORS=hardware python apps/pi_node.py  # just P1
+PARKING_LIGHT_THRESHOLD=650 PARKING_SENSORS=hardware python apps/pi_node.py     # every spot
 ```
 
 ## Servo behavior and power

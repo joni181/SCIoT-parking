@@ -8,20 +8,21 @@ Sensors are the one piece that needs real hardware. By default this runs the
 hardware-free `SimulatedSensors` and plays a short scripted scenario, so you can
 run it with no hardware and watch the laptop react over the broker.
 `PARKING_SENSORS=hardware` opens a `MegaLink` to the Mega's serial port and
-selects the real drivers: `DistanceSensor`, `NfcReader`, and one buffer
-`OccupancySensor` (the only photoresistor wired up so far, see
-`hardware/pinmap.yaml`) are live over that link, `GateServo` sends real
-`GATE OPEN`/`GATE CLOSE` commands over it, and `DurationDial`/`BufferLed`/
-`VehicleMover` remain inert until their `TODO` hardware loops are
-implemented. There is no gate motion sensor in the current hardware;
-`GateSafetyController` closes the gate on a timer instead (see
-`parking/dispatching/gate_safety.py`).
+selects the real drivers: `DistanceSensor`, `NfcReader`, and one
+`OccupancySensor` per spot in `LIGHT_SENSORS` (buffer B1 + P1/P2/P3, one
+photoresistor each, see `hardware/pinmap.yaml`) are live over that link,
+`GateServo` sends real `GATE OPEN`/`GATE CLOSE` commands over it, and
+`DurationDial`/`BufferLed`/`VehicleMover` remain inert until their `TODO`
+hardware loops are implemented. There is no gate motion sensor in the
+current hardware; `GateSafetyController` closes the gate on a timer instead
+(see `parking/dispatching/gate_safety.py`).
 
     python apps/pi_node.py
     PARKING_BROKER_HOST=192.168.0.10 python apps/pi_node.py     # broker on the laptop
     PARKING_SENSORS=hardware python apps/pi_node.py             # on the real Pi
     PARKING_MEGA_PORT=/dev/ttyACM0 PARKING_SENSORS=hardware python apps/pi_node.py  # override the port
-    PARKING_LIGHT_THRESHOLD=650 PARKING_SENSORS=hardware python apps/pi_node.py    # re-tune for today's light
+    PARKING_LIGHT_THRESHOLD=650 PARKING_SENSORS=hardware python apps/pi_node.py     # re-tune every spot
+    PARKING_LIGHT_THRESHOLD_P2=430 PARKING_SENSORS=hardware python apps/pi_node.py  # re-tune just P2
 """
 from __future__ import annotations
 
@@ -42,6 +43,22 @@ from parking.sensors import DistanceSensor, DurationDial, NfcReader, OccupancySe
 from parking.simulation import SimulatedSensors  # noqa: E402
 
 REGISTERED_CARD = "AB12CD34"
+
+# spot_id -> the Mega firmware's label for that spot's photoresistor.
+LIGHT_SENSORS = {
+    "B1": "photoresistor_a15",
+    "P1": "photoresistor_a12",
+    "P2": "photoresistor_a13",
+    "P3": "photoresistor_a14",
+}
+DEFAULT_LIGHT_THRESHOLD = 600  # sits in B1's calibrated gap (~300 covered, ~860 empty)
+
+
+def _light_threshold(spot_id: str) -> int:
+    """PARKING_LIGHT_THRESHOLD_<spot> overrides PARKING_LIGHT_THRESHOLD (each
+    photoresistor's mounting/wiring calibrates to a different crossover)."""
+    fallback = os.environ.get("PARKING_LIGHT_THRESHOLD", str(DEFAULT_LIGHT_THRESHOLD))
+    return int(os.environ.get(f"PARKING_LIGHT_THRESHOLD_{spot_id}", fallback))
 
 
 def pi_components(bus: MqttBus, link: Optional[MegaLink] = None) -> list:
@@ -106,14 +123,10 @@ def run_hardware_sensors(bus: MqttBus, link: MegaLink) -> None:
     be started *before* `link.start()` opens the port and begins dispatching
     lines to those listeners.
     """
-    light_threshold = int(os.environ.get("PARKING_LIGHT_THRESHOLD", "600"))
-
     sensors = [
-        # Only one photoresistor is wired up today (A15, over the buffer);
-        # there's nothing real to construct for P1/P2/P3 yet. 600 sits in the
-        # gap between calibrated readings (~300 covered, ~860 empty); override
-        # with PARKING_LIGHT_THRESHOLD if ambient light shifts things later.
-        OccupancySensor(bus, "B1", link, threshold=light_threshold),
+        OccupancySensor(bus, spot_id, link, sensor_label=label, threshold=_light_threshold(spot_id))
+        for spot_id, label in LIGHT_SENSORS.items()
+    ] + [
         NfcReader(bus, link, reader=m.READER_GATE, firmware_reader=1),
         NfcReader(bus, link, reader=m.READER_CHECKOUT, firmware_reader=2),
         DurationDial(bus),
@@ -123,9 +136,9 @@ def run_hardware_sensors(bus: MqttBus, link: MegaLink) -> None:
         sensor.start()
     link.start()
     print(
-        "[pi] hardware sensors started; distance ranger, NFC readers, and the "
-        "buffer's photoresistor are live over serial; duration dial remains a "
-        "TODO skeleton emitting no events. Ctrl-C to stop."
+        "[pi] hardware sensors started; distance ranger, NFC readers, and all "
+        "4 photoresistors (B1/P1/P2/P3) are live over serial; duration dial "
+        "remains a TODO skeleton emitting no events. Ctrl-C to stop."
     )
     try:
         while True:

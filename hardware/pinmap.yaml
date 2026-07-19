@@ -76,13 +76,24 @@ controllers:
     power: 3.3V
     safety: "Level-shift Mega 5V outputs (MOSI, SCK, SS, RST) down to 3.3V before the RC522."
 
-  photoresistor:
-    pin: mega.A15
-    interface: adc15
+  photoresistors:
+    interface: adc
     output: raw_0_to_1023
-    covers: buffer.B1
-    wiring: "For a bare LDR: 5V -> LDR -> A15 -> 10kΩ resistor -> GND (reversing the divider reverses the reading direction)."
-    notes: "Only one photoresistor exists; it watches the buffer (B1), not P1/P2/P3. parking.sensors.OccupancySensor's threshold/direction need calibrating against the physical mounting - watch raw values with the buffer empty vs. covered."
+    wiring: "For a bare LDR: 5V -> LDR -> A15/A12/A13/A14 -> 10kΩ resistor -> GND (reversing the divider reverses that sensor's reading direction)."
+    notes: "One photoresistor per spot; threshold/direction are calibrated per sensor (see parking.sensors.OccupancySensor), not shared - each mounting/wiring can differ. Use hardware/pi/bringup/test_photoresistor_threshold.py to watch a given spot empty vs. covered."
+    sensors:
+      - id: photoresistor_a15
+        pin: mega.A15
+        covers: buffer.B1
+      - id: photoresistor_a12
+        pin: mega.A12
+        covers: parking.P1
+      - id: photoresistor_a13
+        pin: mega.A13
+        covers: parking.P2
+      - id: photoresistor_a14
+        pin: mega.A14
+        covers: parking.P3
 
   ultrasonic_ranger:
     model: HC-SR04P
