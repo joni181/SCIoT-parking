@@ -467,6 +467,60 @@ static bool parse_uint8(const char *text, uint8_t *out) {
     return true;
 }
 
+/* Mirrors DurationDial's mapping (parking/sensors/drivers.py) so the LCD
+ * shows the same duration the rest of the system actually uses - keep these
+ * in sync if either side's defaults change. */
+#define DIAL_DEFAULT_MINUTES 30
+#define DIAL_MINUTES_PER_TICK 5
+#define DIAL_MIN_MINUTES 5
+#define DIAL_MAX_MINUTES 180
+
+static int16_t dial_minutes_from_ticks(int16_t ticks) {
+    int16_t minutes = (int16_t)(DIAL_DEFAULT_MINUTES + ticks * DIAL_MINUTES_PER_TICK);
+    if (minutes < DIAL_MIN_MINUTES) {
+        minutes = DIAL_MIN_MINUTES;
+    }
+    if (minutes > DIAL_MAX_MINUTES) {
+        minutes = DIAL_MAX_MINUTES;
+    }
+    return minutes;
+}
+
+static void lcd_render_minutes(int16_t position) {
+    uint16_t minutes = (uint16_t)dial_minutes_from_ticks(position);
+    char digits[4];
+    uint8_t count = 0;
+    do {
+        digits[count++] = (char)('0' + (minutes % 10));
+        minutes /= 10;
+    } while (minutes && count < sizeof(digits));
+
+    char line[8];
+    uint8_t index = 0;
+    while (count) {
+        line[index++] = digits[--count];
+    }
+    line[index++] = ' ';
+    line[index++] = 'm';
+    line[index++] = 'i';
+    line[index++] = 'n';
+    line[index] = '\0';
+
+    lcd_line(0x80, "Duration");
+    lcd_line(0xC0, line);
+}
+
+/* publish_position() (shared with the plain rotary+LCD bring-up target)
+ * renders raw ticks; the full controller overwrites that with the mapped
+ * duration immediately after, so the LCD reflects what the Pi will actually
+ * use rather than an internal tick count. */
+static void controller_publish_position(int16_t position, bool lcd_ready) {
+    publish_position(position, lcd_ready);
+    if (lcd_ready) {
+        lcd_render_minutes(position);
+    }
+}
+
 static void servo_set_raw_angle(uint8_t angle) {
     const uint16_t pulse_us = SERVO_MIN_PULSE_US +
         (((uint32_t)angle * (SERVO_MAX_PULSE_US - SERVO_MIN_PULSE_US)) /
@@ -565,7 +619,7 @@ int main(void) {
     uart_puts("READY controller=mega lcd=");
     uart_puts(lcd_ready ? "pcf8574-ready" : "not-found");
     uart_puts(" rotary=D23,D25 light=A12,A13,A14,A15 ultrasonic=D7trig,D24echo servo=D6(GATE cmd)\r\n");
-    publish_position(position, lcd_ready);
+    controller_publish_position(position, lcd_ready);
     gate_set(false); /* closed on boot */
 
     for (;;) {
@@ -578,11 +632,11 @@ int main(void) {
             if (accumulator >= 4) {
                 ++position;
                 accumulator = 0;
-                publish_position(position, lcd_ready);
+                controller_publish_position(position, lcd_ready);
             } else if (accumulator <= -4) {
                 --position;
                 accumulator = 0;
-                publish_position(position, lcd_ready);
+                controller_publish_position(position, lcd_ready);
             }
         }
 
