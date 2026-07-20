@@ -53,6 +53,7 @@ cp config/config.example.yaml config/config.yaml
 ```
 
 Edit `config/config.yaml`:
+
 - **Laptop:** leave `broker_host: 127.0.0.1`.
 - **Pi:** set `broker_host` to the laptop's **LAN IP** (e.g. `192.168.0.10`) and
   `node_name: pi`. Both machines must be on the same network.
